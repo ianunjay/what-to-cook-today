@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#C1440E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cook Today">
+<link rel="manifest" href="manifest.json">
+<title>What to Cook Today</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ───────────────────────────────────────────── */
+:root {
+  --tc:       #C1440E;   /* terracotta — one brand color */
+  --tc-light: #F5E8E2;   /* terracotta tint for selections */
+  --tc-mid:   #E07050;   /* hover/secondary states */
+  --green:    #2A7A4A;   /* cooked / ready states only */
+  --green-lt: #EAF4EF;
+  --ink:      #1A1A18;   /* primary text */
+  --ink2:     #5A5A56;   /* secondary text */
+  --ink3:     #9A9A94;   /* hints/placeholders */
+  --bg:       #FAFAF8;   /* page background */
+  --surface:  #FFFFFF;   /* card surfaces */
+  --border:   rgba(26,26,24,.1);
+  --border2:  rgba(26,26,24,.18);
+  --r-sm:     6px;
+  --r-md:     10px;
+  --r-lg:     14px;
+  --r-xl:     18px;
+}
+/* ── RESET ───────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overscroll-behavior:none;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+button{font-family:inherit;cursor:pointer;}
+input,select{font-family:inherit;}
+
+/* ── LAYOUT ──────────────────────────────────────────── */
+.app{display:flex;flex-direction:column;height:100dvh;overflow:hidden;}
+.app-header{flex-shrink:0;background:var(--surface);border-bottom:0.5px solid var(--border);
+  padding:16px 16px 0;padding-top:calc(16px + env(safe-area-inset-top,0px));}
+.app-header h1{font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.3px;}
+.app-header p{font-size:12px;color:var(--ink3);margin-top:1px;}
+.nav-tabs{display:flex;margin-top:12px;}
+.nav-tab{flex:1;padding:8px 4px 10px;text-align:center;font-size:11px;font-weight:500;
+  color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;
+  line-height:1.3;user-select:none;}
+.nav-tab svg{display:block;margin:0 auto 3px;width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.nav-tab.active{color:var(--tc);border-bottom-color:var(--tc);}
+
+.pages{flex:1;overflow:hidden;position:relative;}
+.page{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;}
+.page.active{display:block;}
+.page-inner{padding:16px 16px 100px;}
+
+/* ── SEGMENTED CONTROL ───────────────────────────────── */
+.seg-ctrl{display:flex;background:rgba(26,26,24,.06);border-radius:var(--r-md);padding:3px;gap:2px;margin-bottom:14px;}
+.seg-btn{flex:1;padding:6px 4px;border-radius:var(--r-sm);border:none;background:transparent;
+  font-size:12px;font-weight:500;color:var(--ink3);transition:all .15s;white-space:nowrap;}
+.seg-btn.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+
+/* ── SEARCH ──────────────────────────────────────────── */
+.search-row{position:relative;margin-bottom:12px;}
+.search-row input{width:100%;height:38px;padding:0 12px 0 36px;border-radius:var(--r-lg);
+  border:0.5px solid var(--border2);background:var(--surface);color:var(--ink);font-size:13px;outline:none;
+  transition:border-color .15s;}
+.search-row input:focus{border-color:var(--tc);}
+.search-row input::placeholder{color:var(--ink3);}
+.search-row .s-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:1.8;stroke-linecap:round;}
+
+/* ── PILL TABS (categories) ───────────────────────────── */
+.pill-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px;}
+.pill-tabs::-webkit-scrollbar{display:none;}
+.pill-tab{white-space:nowrap;padding:5px 12px;border-radius:100px;border:0.5px solid var(--border2);
+  background:var(--surface);font-size:12px;font-weight:500;color:var(--ink2);cursor:pointer;
+  transition:all .15s;flex-shrink:0;}
+.pill-tab.active{background:var(--tc);border-color:var(--tc);color:#fff;}
+
+/* count */
+.count-note{font-size:11px;color:var(--ink3);text-align:center;margin-bottom:8px;}
+.count-note strong{color:var(--tc);font-weight:600;}
+
+/* ── SECTION HEADER ───────────────────────────────────── */
+.sec-hdr{display:flex;align-items:center;gap:8px;margin:14px 0 8px;grid-column:1/-1;}
+.sec-hdr span{font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap;letter-spacing:.02em;text-transform:uppercase;}
+.sec-hdr hr{flex:1;border:none;border-top:0.5px solid var(--border);margin:0;}
+
+/* ── DISH GRID ────────────────────────────────────────── */
+.dish-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;}
+.dish-card{background:var(--surface);border-radius:var(--r-lg);padding:12px;border:0.5px solid var(--border);
+  cursor:pointer;transition:border-color .15s,background .15s;position:relative;user-select:none;}
+.dish-card:active{background:#f5f5f3;}
+.dish-card.cooked{border-color:var(--green);background:var(--green-lt);}
+.dish-card .dc-name{font-size:13px;font-weight:500;color:var(--ink);line-height:1.35;margin-bottom:6px;}
+.dish-card .dc-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.meal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.meal-dot.breakfast{background:#D4860A;}
+.meal-dot.lunch{background:var(--tc);}
+.meal-dot.dinner{background:#3D5A80;}
+.meal-dot.any{background:var(--green);}
+.meal-label{font-size:10px;color:var(--ink3);font-weight:500;}
+.last-cooked-lbl{font-size:10px;color:var(--ink3);font-style:italic;}
+.cooked-check{position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;
+  background:var(--green);display:none;align-items:center;justify-content:center;}
+.cooked-check svg{width:10px;height:10px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+.dish-card.cooked .cooked-check{display:flex;}
+.dish-card.hidden{display:none;}
+.custom-star{position:absolute;top:9px;left:9px;width:16px;height:16px;border-radius:50%;
+  background:#F5C842;display:flex;align-items:center;justify-content:center;font-size:8px;}
+
+/* ── SPIN PAGE ────────────────────────────────────────── */
+.spin-page{padding:16px 16px 100px;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.wheel-wrap{position:relative;width:min(260px,70vw);height:min(260px,70vw);flex-shrink:0;}
+.wheel-pointer-svg{position:absolute;top:-10px;left:50%;transform:translateX(-50%);z-index:2;
+  width:20px;height:20px;fill:var(--ink);drop-shadow:none;}
+#wheelCanvas{display:block;border-radius:50%;border:0.5px solid var(--border);}
+#spinBtn{width:min(260px,70vw);height:44px;border-radius:100px;border:none;background:var(--tc);
+  color:#fff;font-size:15px;font-weight:600;letter-spacing:-.1px;
+  transition:opacity .15s,transform .15s;}
+#spinBtn:disabled{opacity:.5;}
+#spinBtn:not(:disabled):active{transform:scale(.97);}
+.spin-result{width:100%;max-width:340px;background:var(--surface);border-radius:var(--r-xl);
+  padding:14px 16px;border:0.5px solid var(--border);display:none;animation:fadeUp .3s ease;}
+.spin-result.visible{display:block;}
+.spin-result .sr-eyebrow{font-size:10px;font-weight:600;color:var(--tc);text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:4px;}
+.spin-result .sr-name{font-size:20px;font-weight:600;color:var(--ink);cursor:pointer;
+  border-bottom:1px dashed var(--border2);padding-bottom:8px;margin-bottom:8px;}
+.spin-result .sr-tags{display:flex;gap:6px;align-items:center;margin-bottom:10px;}
+.sr-tag{font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:4px;}
+.spin-result .sr-plan-btn{height:32px;padding:0 14px;border-radius:100px;border:0.5px solid var(--border2);
+  background:var(--surface);font-size:12px;font-weight:500;color:var(--tc);transition:background .15s;}
+.spin-result .sr-plan-btn:hover{background:var(--tc-light);}
+
+/* ── PLANNER ─────────────────────────────────────────── */
+.planner-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.planner-hdr h2{font-size:18px;font-weight:600;color:var(--ink);}
+.week-nav{display:flex;align-items:center;gap:8px;}
+.week-nav button{width:28px;height:28px;border-radius:50%;border:0.5px solid var(--border2);
+  background:var(--surface);color:var(--ink);font-size:14px;display:flex;align-items:center;justify-content:center;
+  transition:background .15s;}
+.week-nav button:hover{background:var(--tc-light);}
+.week-label{font-size:11px;color:var(--ink3);font-weight:500;}
+.day-card{background:var(--surface);border-radius:var(--r-lg);border:0.5px solid var(--border);
+  overflow:hidden;margin-bottom:8px;}
+.day-card.today{border-color:var(--tc);border-left-width:3px;}
+.day-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;
+  border-bottom:0.5px solid var(--border);}
+.day-name{font-size:13px;font-weight:600;color:var(--ink);}
+.day-card.today .day-name{color:var(--tc);}
+.day-date-lbl{font-size:11px;color:var(--ink3);}
+.meal-slots{padding:4px 0;}
+.meal-slot{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:0.5px solid var(--border);}
+.meal-slot:last-child{border-bottom:none;}
+.slot-lbl{font-size:10px;font-weight:600;color:var(--ink3);width:48px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;}
+.slot-val{flex:1;min-height:28px;border-radius:var(--r-sm);border:0.5px solid var(--border);
+  background:rgba(26,26,24,.03);display:flex;align-items:center;padding:0 8px;font-size:12px;
+  color:var(--ink3);cursor:pointer;transition:border-color .15s,background .15s;}
+.slot-val:hover{border-color:var(--tc);background:var(--tc-light);}
+.slot-val.filled{color:var(--ink);border-color:var(--border2);background:var(--surface);}
+.slot-val .slot-emoji{margin-right:5px;font-size:13px;}
+.slot-clear{width:22px;height:22px;border:none;background:none;color:var(--ink3);font-size:14px;
+  border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.slot-clear:hover{background:rgba(26,26,24,.07);}
+.shopping-btn{width:100%;height:44px;border-radius:var(--r-lg);border:none;background:var(--green);
+  color:#fff;font-size:14px;font-weight:600;margin-top:8px;transition:opacity .15s;}
+.shopping-btn:active{opacity:.85;}
+
+/* ── HISTORY ─────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.stat-card{background:var(--surface);border-radius:var(--r-lg);padding:12px;border:0.5px solid var(--border);}
+.stat-num{font-size:26px;font-weight:600;color:var(--tc);letter-spacing:-.5px;line-height:1;}
+.stat-lbl{font-size:11px;color:var(--ink3);margin-top:3px;font-weight:500;}
+.heatmap-card{background:var(--surface);border-radius:var(--r-lg);padding:14px;border:0.5px solid var(--border);margin-bottom:12px;}
+.heatmap-card h3{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.hm-months{display:flex;justify-content:space-between;margin-bottom:4px;}
+.hm-months span{font-size:9px;color:var(--ink3);}
+.hm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.hm-cell{aspect-ratio:1;border-radius:3px;background:rgba(26,26,24,.06);cursor:pointer;transition:transform .1s;}
+.hm-cell:hover{transform:scale(1.3);z-index:2;position:relative;}
+.hm-cell.l1{background:rgba(193,68,14,.2);}
+.hm-cell.l2{background:rgba(193,68,14,.45);}
+.hm-cell.l3{background:rgba(193,68,14,.7);}
+.hm-cell.l4{background:var(--tc);}
+.hm-cell.today-cell{outline:1.5px solid var(--ink);outline-offset:1px;}
+.hm-legend{display:flex;align-items:center;gap:5px;margin-top:8px;}
+.hm-legend span{font-size:10px;color:var(--ink3);}
+.hm-sq{width:10px;height:10px;border-radius:2px;}
+.log-card{background:var(--surface);border-radius:var(--r-lg);border:0.5px solid var(--border);overflow:hidden;}
+.log-card h3{font-size:13px;font-weight:600;color:var(--ink);padding:12px 14px;border-bottom:0.5px solid var(--border);}
+.log-entry{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid var(--border);}
+.log-entry:last-child{border-bottom:none;}
+.log-avatar{width:34px;height:34px;border-radius:50%;background:var(--tc-light);border:0.5px solid rgba(193,68,14,.2);
+  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.log-info{flex:1;min-width:0;}
+.log-dish{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.log-time{font-size:11px;color:var(--ink3);margin-top:1px;}
+.log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.log-empty{text-align:center;padding:32px 20px;color:var(--ink3);font-size:13px;line-height:1.7;}
+
+/* ── FRIDGE PAGE ─────────────────────────────────────── */
+.fridge-hero{margin-bottom:14px;}
+.fridge-hero h2{font-size:18px;font-weight:600;color:var(--ink);}
+.fridge-hero p{font-size:12px;color:var(--ink3);margin-top:2px;}
+.chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.ing-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:100px;
+  background:var(--tc);color:#fff;font-size:12px;font-weight:500;cursor:pointer;
+  animation:fadeUp .2s ease;}
+.ing-chip .chip-x{font-size:10px;opacity:.75;}
+.clear-ing{font-size:11px;color:var(--ink3);background:none;border:none;margin-left:2px;text-decoration:underline;}
+.ing-cat-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;}
+.ing-cat-tabs::-webkit-scrollbar{display:none;}
+.ing-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.ing-pill{padding:6px 12px;border-radius:100px;border:0.5px solid var(--border2);background:var(--surface);
+  font-size:12px;font-weight:500;color:var(--ink2);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.ing-pill .ing-em{font-size:13px;}
+.ing-pill:hover{border-color:var(--tc);}
+.ing-pill.selected{background:var(--tc-light);border-color:var(--tc);color:var(--tc);}
+.ing-pill.hidden-ing{display:none;}
+.fr-results-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.fr-count{font-size:13px;font-weight:600;color:var(--ink);}
+.fr-count strong{color:var(--tc);}
+.match-toggle{display:flex;background:rgba(26,26,24,.06);border-radius:100px;padding:2px;gap:1px;}
+.match-btn{padding:4px 10px;border-radius:100px;border:none;font-size:11px;font-weight:500;
+  color:var(--ink3);background:transparent;transition:all .15s;}
+.match-btn.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.fr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;}
+.fr-card{background:var(--surface);border-radius:var(--r-lg);padding:12px;border:0.5px solid var(--border);
+  cursor:pointer;transition:border-color .15s;position:relative;}
+.fr-card:active{background:#f5f5f3;}
+.fr-card.perfect{border-color:var(--green);}
+.fr-card .fc-name{font-size:13px;font-weight:500;color:var(--ink);line-height:1.3;margin-bottom:7px;}
+.fr-card .fc-ing{font-size:10px;color:var(--ink3);margin-bottom:4px;}
+.match-bar{height:4px;border-radius:2px;background:rgba(26,26,24,.08);overflow:hidden;margin-bottom:3px;}
+.match-fill{height:100%;border-radius:2px;background:var(--green);transition:width .4s ease;}
+.fr-card .fc-pct{font-size:10px;color:var(--ink3);}
+.ready-badge{position:absolute;top:9px;right:9px;background:var(--green);color:#fff;
+  font-size:9px;font-weight:600;padding:2px 6px;border-radius:100px;letter-spacing:.02em;}
+.fridge-empty{text-align:center;padding:48px 20px;color:var(--ink3);font-size:13px;line-height:1.8;}
+.fridge-empty .fe-icon{font-size:40px;margin-bottom:10px;display:block;}
+
+/* ── PICKER / MODAL ───────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;
+  align-items:flex-end;justify-content:center;}
+.overlay.open{display:flex;}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:560px;
+  max-height:80dvh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px);
+  animation:slideUp .28s cubic-bezier(.32,1,.32,1);}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border2);margin:10px auto 14px;}
+.sheet h3{font-size:16px;font-weight:600;color:var(--ink);padding:0 16px 4px;}
+.sheet .sheet-sub{font-size:12px;color:var(--ink3);padding:0 16px 12px;}
+.sheet-search{position:relative;padding:0 16px 10px;flex-shrink:0;}
+.sheet-search input{width:100%;height:36px;padding:0 12px 0 34px;border-radius:var(--r-lg);
+  border:0.5px solid var(--border2);background:var(--bg);font-size:13px;color:var(--ink);outline:none;}
+.sheet-search input:focus{border-color:var(--tc);}
+.sheet-search .s-icon{position:absolute;left:27px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;stroke:var(--ink3);fill:none;stroke-width:1.8;stroke-linecap:round;}
+.sheet-list{overflow-y:auto;flex:1;padding:0 8px 8px;}
+.picker-item{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:var(--r-md);cursor:pointer;transition:background .1s;}
+.picker-item:hover,.picker-item:active{background:var(--tc-light);}
+.picker-item .pi-em{font-size:20px;flex-shrink:0;}
+.picker-item .pi-name{font-size:13px;font-weight:500;color:var(--ink);}
+.picker-item .pi-sub{font-size:11px;color:var(--ink3);}
+.add-sheet label{display:block;font-size:11px;font-weight:600;color:var(--ink2);
+  text-transform:uppercase;letter-spacing:.05em;padding:0 16px 5px;}
+.add-sheet input,.add-sheet select{display:block;width:calc(100% - 32px);margin:0 16px 12px;height:40px;
+  padding:0 12px;border-radius:var(--r-md);border:0.5px solid var(--border2);background:var(--bg);
+  font-size:13px;color:var(--ink);outline:none;-webkit-appearance:none;}
+.add-sheet input:focus,.add-sheet select:focus{border-color:var(--tc);}
+.sheet-actions{display:flex;gap:8px;padding:8px 16px 14px;flex-shrink:0;}
+.btn-primary{flex:1;height:44px;border-radius:var(--r-lg);border:none;background:var(--tc);
+  color:#fff;font-size:14px;font-weight:600;transition:opacity .15s;}
+.btn-primary:active{opacity:.85;}
+.btn-ghost{height:44px;padding:0 16px;border-radius:var(--r-lg);border:0.5px solid var(--border2);
+  background:var(--surface);font-size:13px;color:var(--ink2);}
+
+/* ── BOTTOM BAR ───────────────────────────────────────── */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);
+  border-top:0.5px solid var(--border);padding:10px 16px;
+  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  display:none;align-items:center;gap:8px;z-index:40;}
+.bottom-bar.visible{display:flex;}
+.cooked-info{flex:1;font-size:12px;color:var(--ink3);}
+.cooked-info strong{font-size:14px;font-weight:600;color:var(--green);}
+.btn-add-dish{height:36px;padding:0 14px;border-radius:100px;border:none;background:var(--tc);
+  color:#fff;font-size:12px;font-weight:600;}
+.btn-clear{height:36px;padding:0 12px;border-radius:100px;border:0.5px solid var(--border2);
+  background:var(--surface);font-size:12px;color:var(--ink3);}
+
+/* ── TOOLTIP ──────────────────────────────────────────── */
+.tooltip{position:fixed;background:rgba(26,26,24,.9);color:#fff;font-size:11px;
+  padding:6px 9px;border-radius:var(--r-sm);pointer-events:none;z-index:999;display:none;
+  line-height:1.5;max-width:180px;}
+
+/* ── INSTALL BANNER ───────────────────────────────────── */
+.install-banner{display:none;align-items:center;gap:10px;padding:10px 14px;
+  background:var(--tc-light);border-bottom:0.5px solid rgba(193,68,14,.2);}
+.install-banner p{flex:1;font-size:12px;color:var(--ink2);line-height:1.4;}
+.install-banner p strong{color:var(--tc);}
+.install-btn{height:30px;padding:0 12px;border-radius:100px;border:none;background:var(--tc);
+  color:#fff;font-size:11px;font-weight:600;white-space:nowrap;}
+.install-dismiss{width:26px;height:26px;border:none;background:none;color:var(--ink3);font-size:16px;
+  display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;}
+
+/* ── ANIMATIONS ───────────────────────────────────────── */
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.spin-anim{animation:fadeUp .35s cubic-bezier(.34,1.4,.64,1);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- INSTALL BANNER -->
+  <div class="install-banner" id="installBanner">
+    <p><strong>Add to Home Screen</strong> for the full app experience — works offline too.</p>
+    <button class="install-btn" id="installBtn">Install</button>
+    <button class="install-dismiss" onclick="dismissInstall()">✕</button>
+  </div>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <h1>What to Cook Today</h1>
+    <p>Your personal meal planner</p>
+    <nav class="nav-tabs" id="navTabs">
+      <div class="nav-tab active" data-page="dishes" onclick="showPage('dishes',this)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>Dishes
+      </div>
+      <div class="nav-tab" data-page="spin" onclick="showPage('spin',this)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Spin
+      </div>
+      <div class="nav-tab" data-page="fridge" onclick="showPage('fridge',this)">
+        <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 10h14"/><path d="M9 6v2"/></svg>Fridge
+      </div>
+      <div class="nav-tab" data-page="planner" onclick="showPage('planner',this)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Planner
+      </div>
+      <div class="nav-tab" data-page="history" onclick="showPage('history',this)">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>History
+      </div>
+    </nav>
+  </header>
+
+  <div class="pages">
+
+    <!-- ══ DISHES PAGE ══ -->
+    <div class="page active" id="page-dishes">
+      <div class="page-inner">
+        <div class="seg-ctrl" id="mealSeg">
+          <button class="seg-btn active" onclick="setMeal('all',this)">All</button>
+          <button class="seg-btn" onclick="setMeal('breakfast',this)">Breakfast</button>
+          <button class="seg-btn" onclick="setMeal('lunch',this)">Lunch</button>
+          <button class="seg-btn" onclick="setMeal('dinner',this)">Dinner</button>
+        </div>
+        <div class="search-row">
+          <svg class="s-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="searchInput" placeholder="Search dishes..." oninput="filterDishes()">
+        </div>
+        <div class="pill-tabs" id="catTabs"></div>
+        <div class="count-note" id="countBadge"></div>
+        <div class="dish-grid" id="dishGrid"></div>
+      </div>
+    </div>
+
+    <!-- ══ SPIN PAGE ══ -->
+    <div class="page" id="page-spin">
+      <div class="spin-page">
+        <div class="seg-ctrl" id="spinMealSeg" style="width:100%;max-width:340px;">
+          <button class="seg-btn active" onclick="setSpinMeal('all',this)">All</button>
+          <button class="seg-btn" onclick="setSpinMeal('breakfast',this)">Breakfast</button>
+          <button class="seg-btn" onclick="setSpinMeal('lunch',this)">Lunch</button>
+          <button class="seg-btn" onclick="setSpinMeal('dinner',this)">Dinner</button>
+        </div>
+        <div class="wheel-wrap">
+          <svg class="wheel-pointer-svg" viewBox="0 0 20 20"><polygon points="10,0 18,18 10,13 2,18"/></svg>
+          <canvas id="wheelCanvas"></canvas>
+        </div>
+        <button id="spinBtn" onclick="spinWheel()">Spin the wheel</button>
+        <div class="spin-result" id="spinResult">
+          <div class="sr-eyebrow">Cook today</div>
+          <div class="sr-name" id="spinName"></div>
+          <div class="sr-tags" id="spinTags"></div>
+          <button class="sr-plan-btn" onclick="addSpinToPlan()">Add to planner</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ FRIDGE PAGE ══ -->
+    <div class="page" id="page-fridge">
+      <div class="page-inner">
+        <div class="fridge-hero">
+          <h2>What's in your fridge?</h2>
+          <p>Pick ingredients you have — we'll show what you can cook</p>
+        </div>
+        <div class="search-row">
+          <svg class="s-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="ingSearchInput" placeholder="Search ingredients..." oninput="renderIngGrid()">
+        </div>
+        <div id="selectedChipsWrap" style="display:none;margin-bottom:10px;">
+          <div class="chips-row" id="chipsRow"></div>
+          <button class="clear-ing" onclick="clearIngredients()">Clear all</button>
+        </div>
+        <div class="pill-tabs ing-cat-tabs" id="ingCatTabs"></div>
+        <div class="ing-grid" id="ingGrid"></div>
+        <div id="fridgeResults" style="display:none;">
+          <div class="fr-results-hdr">
+            <div class="fr-count" id="resultsCount"></div>
+            <div class="match-toggle">
+              <button class="match-btn active" onclick="setMatchMode('all',this)">All</button>
+              <button class="match-btn" onclick="setMatchMode('any',this)">Any</button>
+            </div>
+          </div>
+          <div class="fr-grid" id="fridgeDishGrid"></div>
+        </div>
+        <div class="fridge-empty" id="fridgeEmpty">
+          <span class="fe-icon">🧺</span>
+          Select ingredients above to discover what you can cook
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PLANNER PAGE ══ -->
+    <div class="page" id="page-planner">
+      <div class="page-inner">
+        <div class="planner-hdr">
+          <h2>Weekly Planner</h2>
+          <div class="week-nav">
+            <button onclick="changeWeek(-1)">‹</button>
+            <span class="week-label" id="weekLabel"></span>
+            <button onclick="changeWeek(1)">›</button>
+          </div>
+        </div>
+        <div id="plannerGrid"></div>
+        <button class="shopping-btn" onclick="showShoppingList()">Generate shopping list</button>
+      </div>
+    </div>
+
+    <!-- ══ HISTORY PAGE ══ -->
+    <div class="page" id="page-history">
+      <div class="page-inner">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Total cooks</div></div>
+          <div class="stat-card"><div class="stat-num" id="statUnique">0</div><div class="stat-lbl">Unique dishes</div></div>
+          <div class="stat-card"><div class="stat-num" id="statWeek">0</div><div class="stat-lbl">This week</div></div>
+          <div class="stat-card"><div class="stat-num" id="statStreak">0</div><div class="stat-lbl">Day streak</div></div>
+        </div>
+        <div class="heatmap-card">
+          <h3>Last 12 weeks</h3>
+          <div class="hm-months" id="hmMonths"></div>
+          <div class="hm-grid" id="hmGrid"></div>
+          <div class="hm-legend">
+            <span>Less</span>
+            <div class="hm-sq" style="background:rgba(26,26,24,.06)"></div>
+            <div class="hm-sq" style="background:rgba(193,68,14,.2)"></div>
+            <div class="hm-sq" style="background:rgba(193,68,14,.45)"></div>
+            <div class="hm-sq" style="background:rgba(193,68,14,.7)"></div>
+            <div class="hm-sq" style="background:var(--tc)"></div>
+            <span>More</span>
+          </div>
+        </div>
+        <div class="log-card">
+          <h3>Cook log</h3>
+          <div id="logList"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /pages -->
+
+  <!-- BOTTOM BAR (dishes only) -->
+  <div class="bottom-bar visible" id="bottomBar">
+    <div class="cooked-info"><strong id="cookedCount">0</strong> cooked today</div>
+    <button class="btn-add-dish" onclick="openAddSheet()">+ Add dish</button>
+    <button class="btn-clear" onclick="clearCooked()">Clear</button>
+  </div>
+
+</div><!-- /app -->
+
+<!-- PICKER SHEET -->
+<div class="overlay" id="pickerOverlay" onclick="handlePickerBg(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Pick a dish</h3>
+    <p class="sheet-sub" id="pickerSub"></p>
+    <div class="sheet-search">
+      <svg class="s-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="pickerSearch" placeholder="Search..." oninput="filterPicker()">
+    </div>
+    <div class="sheet-list" id="pickerList"></div>
+  </div>
+</div>
+
+<!-- ADD DISH SHEET -->
+<div class="overlay" id="addOverlay" onclick="handleAddBg(event)">
+  <div class="sheet add-sheet">
+    <div class="sheet-handle"></div>
+    <h3>Add your own dish</h3>
+    <p class="sheet-sub">Add any dish to your personal menu</p>
+    <label>Dish name *</label>
+    <input type="text" id="newName" placeholder="e.g. Dahi Vada, Mirchi Bajji..." maxlength="60">
+    <label>Category</label>
+    <select id="newCat"></select>
+    <label>Meal time</label>
+    <select id="newMeal">
+      <option value="any">Any time</option>
+      <option value="breakfast">Breakfast / Snack</option>
+      <option value="lunch">Lunch</option>
+      <option value="dinner">Dinner</option>
+    </select>
+    <label>Emoji (optional)</label>
+    <input type="text" id="newEmoji" placeholder="leave blank for auto" maxlength="4">
+    <div class="sheet-actions">
+      <button class="btn-primary" onclick="addDish()">Add to menu</button>
+      <button class="btn-ghost" onclick="closeAddSheet()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════
+const mealMap={
+  "Aalu Matar Sabji (Dry)":"lunch","Aalu Matar Gravy":"lunch","Aalu Gobhi":"lunch","Aalu Methi":"lunch",
+  "Dum Aalu":"lunch","Matar Gravy":"lunch","Gobhi Matar":"lunch","Patta Gobhi":"lunch","Gajar Matar":"lunch",
+  "Palak Sabji":"lunch","Methi Sabji":"lunch","Gilki":"lunch","Lauki":"lunch","Chana-Lauki":"lunch",
+  "Bhindi":"lunch","Kaddu":"lunch","Ballor":"lunch","Gawar Falli":"lunch","Green Beans":"lunch","Green Chane (Whole)":"lunch",
+  "Toor Dal":"lunch","Chilke Wali Moong Dal":"lunch","Green Moong Dal (Akkhe)":"lunch","Sprouted Moong Sabji":"lunch",
+  "Brown Moong (Moth)":"lunch","Sprouted Brown Moong Sabji":"lunch","Bina Chilke Wali Moong Dal":"lunch",
+  "Chana Dal":"lunch","Urad Dal / Dal Makhani":"lunch","Groundnut ki Sabji":"lunch",
+  "Sev Tamatar":"lunch","Doodh Dev":"lunch","Kadhi with Bhajiya":"lunch","Paneer Sabji":"lunch","Lauki Kofte":"lunch",
+  "Black Chane":"dinner","Chhole (with Puri/Bhature/Kulche)":"dinner","Rajma":"dinner","Beans":"dinner",
+  "Sprouted Moong":"breakfast","Sprouted Kaale Chane":"breakfast","Sprouted Chhole":"breakfast",
+  "Besan Chilla":"breakfast","Moong Chilla":"breakfast","Appe":"breakfast","Dosa (Rava/Urad)":"breakfast",
+  "Idli Sambhar":"breakfast","Poha":"breakfast","Upma":"breakfast","Uttapam":"breakfast",
+  "Aalu Paratha":"breakfast","Gobhi Paratha":"breakfast","Methi Paratha":"breakfast","Dal ke Parathe":"breakfast",
+  "Khaman Dhokla":"breakfast","Sewaiyan (Fried)":"breakfast","Tomato Soup":"breakfast","Bread Pakoda":"breakfast",
+  "Maggie / Noodles / WokTok / Ramen":"breakfast",
+  "Dal Bati":"dinner","Dal Chikoli":"dinner","Besan Gatta":"dinner","Sabudana Khichdi":"dinner",
+  "Khichdi (Toor/Moong)":"dinner","Masala Khichdi":"dinner","Bajre Ka Khichda":"dinner",
+  "Veg Biryani with Curry":"dinner","Pulav with Boondi Rayta":"dinner","Dal Chawal":"dinner",
+  "Masala Thuli":"dinner","Feeki Thuli with Toor Dal":"dinner","Sweet Thuli":"dinner",
+  "Hakka Noodles":"breakfast","Pasta":"breakfast","Sandwich":"breakfast","Pav Bhaji":"breakfast",
+  "Bhutte ka Kees":"breakfast","Aloo Tikki":"breakfast","Pani Puri":"breakfast","Moong ke Bhajiye":"breakfast",
+  "Aalu ke Bhajiye":"breakfast","Gilki ke Bhajiye":"breakfast","Palak Bhajiye":"breakfast",
+  "Sabudana Vada":"breakfast","Veg Burger":"breakfast","Spring Rolls":"breakfast","Corn Chat":"breakfast",
+};
+const mealLabels={breakfast:"Breakfast",lunch:"Lunch",dinner:"Dinner",any:"Any time"};
+const mealColors={breakfast:"breakfast",lunch:"lunch",dinner:"dinner",any:"any"};
+const getDishMeal=d=>mealMap[d]||"any";
+
+const categories=[
+  {name:"Aalu & Vegetables",dishes:["Aalu Matar Sabji (Dry)","Aalu Matar Gravy","Aalu Gobhi","Aalu Methi","Dum Aalu","Matar Gravy","Gobhi Matar","Patta Gobhi","Gajar Matar"]},
+  {name:"Green Vegetables",dishes:["Palak Sabji","Methi Sabji","Gilki","Lauki","Chana-Lauki","Bhindi","Kaddu","Ballor","Gawar Falli","Green Beans","Green Chane (Whole)"]},
+  {name:"Dal & Legumes",dishes:["Toor Dal","Chilke Wali Moong Dal","Green Moong Dal (Akkhe)","Sprouted Moong Sabji","Brown Moong (Moth)","Sprouted Brown Moong Sabji","Bina Chilke Wali Moong Dal","Chana Dal","Urad Dal / Dal Makhani","Groundnut ki Sabji"]},
+  {name:"Special Dishes",dishes:["Sev Tamatar","Doodh Dev","Kadhi with Bhajiya","Paneer Sabji","Lauki Kofte"]},
+  {name:"Protein (Whole)",dishes:["Black Chane","Chhole (with Puri/Bhature/Kulche)","Rajma","Beans","Sprouted Moong","Sprouted Kaale Chane","Sprouted Chhole"]},
+  {name:"Breakfast & Snacks",dishes:["Besan Chilla","Moong Chilla","Appe","Dosa (Rava/Urad)","Idli Sambhar","Poha","Upma","Uttapam","Aalu Paratha","Gobhi Paratha","Methi Paratha","Dal ke Parathe","Khaman Dhokla","Sewaiyan (Fried)","Tomato Soup","Bread Pakoda","Maggie / Noodles / WokTok / Ramen"]},
+  {name:"Rice & Khichdi",dishes:["Dal Bati","Dal Chikoli","Besan Gatta","Sabudana Khichdi","Khichdi (Toor/Moong)","Masala Khichdi","Bajre Ka Khichda","Veg Biryani with Curry","Pulav with Boondi Rayta","Dal Chawal","Masala Thuli","Feeki Thuli with Toor Dal","Sweet Thuli"]},
+  {name:"Fusion & Street Food",dishes:["Hakka Noodles","Pasta","Sandwich","Pav Bhaji","Bhutte ka Kees","Aloo Tikki","Pani Puri","Moong ke Bhajiye","Aalu ke Bhajiye","Gilki ke Bhajiye","Palak Bhajiye","Sabudana Vada","Veg Burger","Spring Rolls","Corn Chat"]},
+  {name:"My Dishes",dishes:[]},
+];
+
+const emojiMap={
+  "aalu":"🥔","matar":"🟢","gobhi":"🥦","methi":"🌿","dum":"🥘","palak":"🍃","gilki":"🥒","lauki":"🫑",
+  "bhindi":"🫛","kaddu":"🎃","gajar":"🥕","ballor":"🌱","beans":"🫘","chane":"🟤","dal":"🫘","moong":"💚",
+  "chana":"🟡","urad":"⚫","groundnut":"🥜","sev":"🍝","kadhi":"🫕","paneer":"🧀","kofte":"🍡","rajma":"🫘",
+  "chhole":"🍛","sprouted":"🌱","chilla":"🥞","dosa":"🫓","idli":"🔵","poha":"🍚","upma":"🥣","paratha":"🫓",
+  "khaman":"🟡","sewaiyan":"🍜","soup":"🥣","bread":"🍞","maggie":"🍜","noodles":"🍜","khichdi":"🍲",
+  "biryani":"🍚","pulav":"🍛","chawal":"🍚","thuli":"🥣","bajre":"🌾","bati":"🔴","gatta":"🟡","sabudana":"⚪",
+  "pasta":"🍝","sandwich":"🥪","pav":"🍔","tikki":"🟤","puri":"🫧","bhajiye":"🧆","vada":"🍩","hakka":"🍜",
+  "burger":"🍔","spring":"🥢","corn":"🌽","bhutte":"🌽",
+};
+function getEmoji(name,ov){
+  if(ov&&ov.trim())return ov.trim();
+  const l=name.toLowerCase();
+  for(const[k,v]of Object.entries(emojiMap))if(l.includes(k))return v;
+  return"🍽️";
+}
+
+const ingredientCategories=[
+  {name:"Veggies",items:[
+    {name:"Aalu (Potato)",emoji:"🥔",keys:["aalu","potato"]},
+    {name:"Pyaaz (Onion)",emoji:"🧅",keys:["pyaaz","onion"]},
+    {name:"Tamatar (Tomato)",emoji:"🍅",keys:["tamatar","tomato"]},
+    {name:"Adrak (Ginger)",emoji:"🫚",keys:["adrak","ginger"]},
+    {name:"Matar (Peas)",emoji:"🟢",keys:["matar","peas"]},
+    {name:"Gobhi (Cauliflower)",emoji:"🥦",keys:["gobhi","cauliflower"]},
+    {name:"Gajar (Carrot)",emoji:"🥕",keys:["gajar","carrot"]},
+    {name:"Patta Gobhi (Cabbage)",emoji:"🥬",keys:["patta gobhi","cabbage"]},
+    {name:"Palak (Spinach)",emoji:"🍃",keys:["palak","spinach"]},
+    {name:"Methi (Fenugreek)",emoji:"🌿",keys:["methi","fenugreek"]},
+    {name:"Bhindi (Okra)",emoji:"🫛",keys:["bhindi","okra"]},
+    {name:"Lauki (Bottle Gourd)",emoji:"🫑",keys:["lauki","bottle gourd"]},
+    {name:"Kaddu (Pumpkin)",emoji:"🎃",keys:["kaddu","pumpkin"]},
+    {name:"Gilki (Ridge Gourd)",emoji:"🥒",keys:["gilki","ridge gourd"]},
+    {name:"Green Beans",emoji:"🫘",keys:["green beans"]},
+    {name:"Gawar Falli",emoji:"🌱",keys:["gawar"]},
+    {name:"Hari Mirch",emoji:"🌶️",keys:["hari mirch","chilli"]},
+    {name:"Nimbu (Lemon)",emoji:"🍋",keys:["nimbu","lemon"]},
+    {name:"Bhutte (Corn)",emoji:"🌽",keys:["bhutte","corn"]},
+  ]},
+  {name:"Dal & Legumes",items:[
+    {name:"Toor Dal",emoji:"🟡",keys:["toor dal","arhar"]},
+    {name:"Moong Dal",emoji:"💚",keys:["moong dal","moong"]},
+    {name:"Chana Dal",emoji:"🟡",keys:["chana dal","chana"]},
+    {name:"Urad Dal",emoji:"⚫",keys:["urad dal","urad"]},
+    {name:"Rajma",emoji:"🫘",keys:["rajma","kidney beans"]},
+    {name:"Chhole / Kabuli Chana",emoji:"🍛",keys:["chhole","kabuli chana","chickpeas"]},
+    {name:"Black Chane",emoji:"🟤",keys:["black chane","kala chana"]},
+    {name:"Groundnut (Peanuts)",emoji:"🥜",keys:["groundnut","peanut"]},
+    {name:"Sabudana",emoji:"⚪",keys:["sabudana","sago"]},
+  ]},
+  {name:"Dairy",items:[
+    {name:"Dahi (Curd)",emoji:"🥛",keys:["dahi","curd","yogurt"]},
+    {name:"Doodh (Milk)",emoji:"🍼",keys:["doodh","milk"]},
+    {name:"Paneer",emoji:"🧀",keys:["paneer"]},
+    {name:"Besan (Gram Flour)",emoji:"🟡",keys:["besan","gram flour"]},
+    {name:"Makhan (Butter)",emoji:"🧈",keys:["makhan","butter"]},
+    {name:"Ghee",emoji:"🫙",keys:["ghee"]},
+  ]},
+  {name:"Grains",items:[
+    {name:"Chawal (Rice)",emoji:"🍚",keys:["chawal","rice"]},
+    {name:"Atta (Wheat Flour)",emoji:"🌾",keys:["atta","wheat flour"]},
+    {name:"Sooji / Rava",emoji:"🟤",keys:["sooji","rava","semolina"]},
+    {name:"Bajra (Millet)",emoji:"🌾",keys:["bajra","millet"]},
+    {name:"Poha",emoji:"🍚",keys:["poha","flattened rice"]},
+    {name:"Sewaiyan (Vermicelli)",emoji:"🍜",keys:["sewaiyan","vermicelli"]},
+    {name:"Bread",emoji:"🍞",keys:["bread","pav"]},
+    {name:"Maida",emoji:"🫙",keys:["maida","all purpose flour"]},
+  ]},
+  {name:"Pantry",items:[
+    {name:"Tel (Oil)",emoji:"🫚",keys:["tel","oil"]},
+    {name:"Haldi (Turmeric)",emoji:"🟡",keys:["haldi","turmeric"]},
+    {name:"Lal Mirch",emoji:"🌶️",keys:["lal mirch","red chilli"]},
+    {name:"Jeera (Cumin)",emoji:"🌱",keys:["jeera","cumin"]},
+    {name:"Sev",emoji:"🍝",keys:["sev"]},
+    {name:"Noodles / Maggie",emoji:"🍜",keys:["noodles","maggie","pasta"]},
+  ]},
+];
+
+const dishIngredients={
+  "Aalu Matar Sabji (Dry)":["aalu","matar","tamatar","pyaaz","tel"],
+  "Aalu Matar Gravy":["aalu","matar","tamatar","pyaaz","tel"],
+  "Aalu Gobhi":["aalu","gobhi","tamatar","pyaaz","tel"],
+  "Aalu Methi":["aalu","methi","tel"],
+  "Dum Aalu":["aalu","dahi","tamatar","pyaaz","tel"],
+  "Matar Gravy":["matar","tamatar","pyaaz","tel"],
+  "Gobhi Matar":["gobhi","matar","tamatar","tel"],
+  "Patta Gobhi":["patta gobhi","tel"],
+  "Gajar Matar":["gajar","matar","tel"],
+  "Palak Sabji":["palak","pyaaz","tel"],
+  "Methi Sabji":["methi","aalu","tel"],
+  "Gilki":["gilki","tel","pyaaz"],
+  "Lauki":["lauki","tel","pyaaz"],
+  "Chana-Lauki":["lauki","chana dal","tel"],
+  "Bhindi":["bhindi","pyaaz","tel","tamatar"],
+  "Kaddu":["kaddu","tel"],
+  "Ballor":["ballor","tel"],
+  "Gawar Falli":["gawar","tel"],
+  "Green Beans":["green beans","tel"],
+  "Green Chane (Whole)":["chana","tel"],
+  "Toor Dal":["toor dal","tamatar","tel","haldi"],
+  "Chilke Wali Moong Dal":["moong dal","tel","haldi"],
+  "Green Moong Dal (Akkhe)":["moong","tel","haldi"],
+  "Sprouted Moong Sabji":["moong","tel"],
+  "Brown Moong (Moth)":["moong","tel","haldi"],
+  "Sprouted Brown Moong Sabji":["moong","tel"],
+  "Bina Chilke Wali Moong Dal":["moong dal","tel","haldi"],
+  "Chana Dal":["chana dal","tel","haldi"],
+  "Urad Dal / Dal Makhani":["urad dal","tel","tamatar"],
+  "Groundnut ki Sabji":["groundnut","tel","tamatar"],
+  "Sev Tamatar":["sev","tamatar","tel"],
+  "Doodh Dev":["doodh","sewaiyan"],
+  "Kadhi with Bhajiya":["dahi","besan","tel","pyaaz"],
+  "Paneer Sabji":["paneer","tamatar","pyaaz","tel"],
+  "Lauki Kofte":["lauki","besan","tel"],
+  "Black Chane":["black chane","tel","pyaaz","tamatar"],
+  "Chhole (with Puri/Bhature/Kulche)":["chhole","pyaaz","tamatar","tel","atta"],
+  "Rajma":["rajma","pyaaz","tamatar","tel"],
+  "Beans":["green beans","tel"],
+  "Sprouted Moong":["moong"],
+  "Sprouted Kaale Chane":["black chane"],
+  "Sprouted Chhole":["chhole"],
+  "Besan Chilla":["besan","tel","pyaaz"],
+  "Moong Chilla":["moong dal","tel"],
+  "Appe":["sooji","dahi","tel"],
+  "Dosa (Rava/Urad)":["sooji","urad dal","tel"],
+  "Idli Sambhar":["sooji","urad dal","toor dal","tel"],
+  "Poha":["poha","tel","pyaaz"],
+  "Upma":["sooji","tel","pyaaz"],
+  "Uttapam":["sooji","urad dal","tel","tamatar","pyaaz"],
+  "Aalu Paratha":["aalu","atta","tel"],
+  "Gobhi Paratha":["gobhi","atta","tel"],
+  "Methi Paratha":["methi","atta","tel"],
+  "Dal ke Parathe":["toor dal","atta","tel"],
+  "Khaman Dhokla":["besan","dahi","tel"],
+  "Sewaiyan (Fried)":["sewaiyan","tel","doodh"],
+  "Tomato Soup":["tamatar","makhan"],
+  "Bread Pakoda":["bread","besan","aalu","tel"],
+  "Maggie / Noodles / WokTok / Ramen":["noodles","tel"],
+  "Dal Bati":["atta","toor dal","ghee"],
+  "Dal Chikoli":["atta","toor dal","tel"],
+  "Besan Gatta":["besan","dahi","tel"],
+  "Sabudana Khichdi":["sabudana","aalu","groundnut","tel"],
+  "Khichdi (Toor/Moong)":["chawal","toor dal","tel","ghee"],
+  "Masala Khichdi":["chawal","toor dal","tel","pyaaz","tamatar"],
+  "Bajre Ka Khichda":["bajra","tel"],
+  "Veg Biryani with Curry":["chawal","pyaaz","tamatar","tel","dahi"],
+  "Pulav with Boondi Rayta":["chawal","tel","dahi","pyaaz"],
+  "Dal Chawal":["chawal","toor dal","tel"],
+  "Masala Thuli":["sooji","tel","tamatar","pyaaz"],
+  "Feeki Thuli with Toor Dal":["sooji","toor dal","tel"],
+  "Sweet Thuli":["sooji","doodh","tel"],
+  "Hakka Noodles":["noodles","tel","pyaaz"],
+  "Pasta":["noodles","tamatar","tel","pyaaz"],
+  "Sandwich":["bread","tamatar","pyaaz"],
+  "Pav Bhaji":["bread","aalu","matar","tamatar","pyaaz","makhan"],
+  "Bhutte ka Kees":["bhutte","doodh","tel"],
+  "Aloo Tikki":["aalu","besan","tel"],
+  "Pani Puri":["sooji","aalu","tel"],
+  "Moong ke Bhajiye":["moong dal","tel"],
+  "Aalu ke Bhajiye":["aalu","besan","tel"],
+  "Gilki ke Bhajiye":["gilki","besan","tel"],
+  "Palak Bhajiye":["palak","besan","tel"],
+  "Sabudana Vada":["sabudana","aalu","groundnut","tel"],
+  "Veg Burger":["bread","aalu","pyaaz","tamatar"],
+  "Spring Rolls":["maida","patta gobhi","gajar","tel"],
+  "Corn Chat":["bhutte","tamatar","pyaaz"],
+};
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let activeMeal='all', spinMeal='all', activeCat='All';
+let cookedToday=JSON.parse(localStorage.getItem('akb_cooked')||'[]');
+let cookLog=JSON.parse(localStorage.getItem('akb_log')||'[]');
+let customDishes=JSON.parse(localStorage.getItem('akb_custom')||'[]');
+let weekPlan=JSON.parse(localStorage.getItem('akb_plan')||'{}');
+let planOffset=0;
+let selIngredients=new Set();
+let ingMatchMode='all';
+let activeIngCat='All';
+let lastSpinDish=null;
+let pickerDk=null,pickerSlot=null;
+let deferredInstallPrompt=null;
+
+function loadCustom(){
+  const my=categories.find(c=>c.name==='My Dishes');
+  my.dishes=[];
+  customDishes.forEach(d=>{
+    const t=categories.find(c=>c.name===d.catName)||my;
+    if(!t.dishes.includes(d.name))t.dishes.push(d.name);
+    mealMap[d.name]=d.meal||'any';
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════════════════
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  const bb=document.getElementById('bottomBar');
+  bb.classList.toggle('visible',id==='dishes');
+  if(id==='planner')renderPlanner();
+  if(id==='history')renderHistory();
+  if(id==='spin'){resizeWheel();drawWheel();}
+  if(id==='fridge')initFridge();
+}
+
+// ══════════════════════════════════════════════════════
+// DISHES
+// ══════════════════════════════════════════════════════
+function buildCatTabs(){
+  const t=document.getElementById('catTabs');t.innerHTML='';
+  [{label:'All',val:'All'},...categories.map(c=>({label:c.name,val:c.name}))].forEach((item,i)=>{
+    const b=document.createElement('button');
+    b.className='pill-tab'+(i===0?' active':'');b.textContent=item.label;
+    b.onclick=()=>{activeCat=item.val;document.querySelectorAll('#catTabs .pill-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');filterDishes();};
+    t.appendChild(b);
+  });
+}
+
+function getLastCooked(dish){
+  const e=cookLog.filter(x=>x.dish===dish).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+  return e.length?e[0].timestamp:null;
+}
+function fmtRel(iso){
+  const d=Math.floor((Date.now()-new Date(iso))/86400000);
+  if(d===0)return'Today';if(d===1)return'Yesterday';if(d<7)return d+'d ago';
+  if(d<30)return Math.floor(d/7)+'w ago';if(d<365)return Math.floor(d/30)+'mo ago';return Math.floor(d/365)+'y ago';
+}
+
+function buildGrid(){
+  const g=document.getElementById('dishGrid');g.innerHTML='';
+  categories.forEach(cat=>{
+    if(!cat.dishes.length)return;
+    const hdr=document.createElement('div');hdr.className='sec-hdr';hdr.dataset.cat=cat.name;
+    hdr.innerHTML=`<span>${cat.name}</span><hr>`;g.appendChild(hdr);
+    cat.dishes.forEach(dish=>{
+      const isCustom=customDishes.some(d=>d.name===dish);
+      const cData=customDishes.find(d=>d.name===dish);
+      const meal=cData?(cData.meal||'any'):getDishMeal(dish);
+      const lc=getLastCooked(dish);
+      const card=document.createElement('div');
+      card.className='dish-card'+(cookedToday.includes(dish)?' cooked':'');
+      card.dataset.dish=dish;card.dataset.cat=cat.name;card.dataset.meal=meal;
+      card.innerHTML=`
+        ${isCustom?'<div class="custom-star">★</div>':''}
+        <div class="cooked-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+        <div class="dc-name">${dish}</div>
+        <div class="dc-meta">
+          <div class="meal-dot ${meal}"></div>
+          <span class="meal-label">${mealLabels[meal]}</span>
+          ${lc?`<span class="last-cooked-lbl">· ${fmtRel(lc)}</span>`:''}
+        </div>`;
+      card.onclick=()=>toggleCooked(dish,card);g.appendChild(card);
+    });
+  });
+  updateCount();
+}
+
+function setMeal(type,el){
+  activeMeal=type;
+  document.querySelectorAll('#mealSeg .seg-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');filterDishes();
+}
+
+function filterDishes(){
+  const q=document.getElementById('searchInput').value.toLowerCase().trim();
+  let vis=0;const hdrVis={};
+  document.querySelectorAll('.dish-card').forEach(card=>{
+    const name=card.dataset.dish.toLowerCase(),cat=card.dataset.cat,meal=card.dataset.meal||'any';
+    const ok=(activeCat==='All'||cat===activeCat)&&(activeMeal==='all'||meal===activeMeal||meal==='any')&&(!q||name.includes(q));
+    card.classList.toggle('hidden',!ok);
+    if(ok){hdrVis[cat]=true;vis++;}
+  });
+  document.querySelectorAll('.sec-hdr').forEach(h=>{
+    const c=h.dataset.cat;
+    h.classList.toggle('hidden',(activeCat!=='All'&&c!==activeCat)||!hdrVis[c]);
+  });
+  const b=document.getElementById('countBadge');
+  b.innerHTML=(q||activeCat!=='All'||activeMeal!=='all')?`<strong>${vis}</strong> dishes found`:'';
+  document.querySelector('.dish-grid .no-res')?.remove();
+  if(!vis){const m=document.createElement('div');m.className='no-res';m.style.cssText='grid-column:1/-1;text-align:center;padding:32px;color:var(--ink3);font-size:13px';m.textContent='No dishes found';document.getElementById('dishGrid').appendChild(m);}
+}
+
+function toggleCooked(dish,card){
+  if(cookedToday.includes(dish)){
+    cookedToday=cookedToday.filter(d=>d!==dish);card.classList.remove('cooked');
+    const lbl=card.querySelector('.last-cooked-lbl');
+    if(lbl)lbl.remove();
+  } else {
+    cookedToday.push(dish);card.classList.add('cooked');
+    cookLog.push({dish,timestamp:new Date().toISOString(),meal:getDishMeal(dish)});
+    localStorage.setItem('akb_log',JSON.stringify(cookLog));
+    let meta=card.querySelector('.dc-meta');
+    let lbl=meta.querySelector('.last-cooked-lbl');
+    if(!lbl){lbl=document.createElement('span');lbl.className='last-cooked-lbl';meta.appendChild(lbl);}
+    lbl.textContent='· Today';
+  }
+  localStorage.setItem('akb_cooked',JSON.stringify(cookedToday));
+  updateCount();
+}
+function updateCount(){document.getElementById('cookedCount').textContent=cookedToday.length;}
+function clearCooked(){
+  cookedToday=[];localStorage.removeItem('akb_cooked');
+  document.querySelectorAll('.dish-card.cooked').forEach(c=>c.classList.remove('cooked'));
+  updateCount();
+}
+
+// ══════════════════════════════════════════════════════
+// SPIN WHEEL
+// ══════════════════════════════════════════════════════
+const WCOLS=['#C1440E','#D4593A','#C85030','#B83C20','#E06040','#A83010','#D84828','#C04020','#E07050','#B02808','#D05838','#C84428'];
+
+function resizeWheel(){
+  const cvs=document.getElementById('wheelCanvas');
+  const sz=Math.min(260,Math.floor(window.innerWidth*0.7));
+  cvs.width=sz;cvs.height=sz;
+}
+
+function getWheelPool(){
+  let pool=categories.flatMap(cat=>cat.dishes.map(d=>({dish:d,cat:cat.name,meal:getDishMeal(d)})));
+  if(spinMeal!=='all')pool=pool.filter(d=>d.meal===spinMeal||d.meal==='any');
+  if(!pool.length)pool=categories.flatMap(cat=>cat.dishes.map(d=>({dish:d,cat:cat.name,meal:getDishMeal(d)})));
+  const unc=pool.filter(d=>!cookedToday.includes(d.dish));
+  const src=unc.length>=6?unc:pool;
+  return [...src].sort(()=>Math.random()-.5).slice(0,12);
+}
+
+function drawWheel(angle=0,highlight=-1){
+  const cvs=document.getElementById('wheelCanvas');if(!cvs)return[];
+  const ctx=cvs.getContext('2d');
+  const dishes=getWheelPool();if(!dishes.length)return[];
+  const W=cvs.width,cx=W/2,cy=W/2,r=cx-2;
+  const arc=(2*Math.PI)/dishes.length;
+  ctx.clearRect(0,0,W,W);
+  dishes.forEach((item,i)=>{
+    const sa=i*arc-Math.PI/2+angle,ea=sa+arc;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,sa,ea);ctx.closePath();
+    ctx.fillStyle=i===highlight?'#F5C842':WCOLS[i%WCOLS.length];ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=1;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(sa+arc/2);ctx.textAlign='right';
+    ctx.fillStyle=i===highlight?'#1A1A18':'rgba(255,255,255,.92)';
+    ctx.font=`500 ${W>200?10:9}px DM Sans,sans-serif`;
+    const lbl=item.dish.length>15?item.dish.slice(0,14)+'…':item.dish;
+    ctx.fillText(lbl,r-6,4);ctx.restore();
+  });
+  ctx.beginPath();ctx.arc(cx,cy,20,0,2*Math.PI);ctx.fillStyle='#FAFAF8';ctx.fill();
+  ctx.strokeStyle='rgba(26,26,24,.1)';ctx.lineWidth=0.5;ctx.stroke();
+  return dishes;
+}
+
+function setSpinMeal(type,el){
+  spinMeal=type;
+  document.querySelectorAll('#spinMealSeg .seg-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');drawWheel();
+}
+
+let spinning=false;
+function spinWheel(){
+  if(spinning)return;
+  spinning=true;
+  const btn=document.getElementById('spinBtn');btn.disabled=true;
+  document.getElementById('spinResult').classList.remove('visible');
+  const dishes=getWheelPool();if(!dishes.length){spinning=false;btn.disabled=false;return;}
+  const target=Math.floor(Math.random()*dishes.length);
+  const fullSpins=5+Math.floor(Math.random()*4);
+  const arc=(2*Math.PI)/dishes.length;
+  const finalAngle=fullSpins*2*Math.PI+target*arc+arc/2;
+  let start=null;const dur=3200+Math.random()*800;
+  const ease=t=>1-Math.pow(1-t,4);
+  function frame(ts){
+    if(!start)start=ts;
+    const p=Math.min((ts-start)/dur,1);
+    const ang=ease(p)*finalAngle;
+    drawWheel(ang,p===1?target:-1);
+    if(p<1){requestAnimationFrame(frame);}
+    else{
+      const pick=dishes[target];lastSpinDish=pick;
+      const nameEl=document.getElementById('spinName');
+      nameEl.textContent=getEmoji(pick.dish)+' '+pick.dish;
+      document.getElementById('spinTags').innerHTML=`
+        <div class="meal-dot ${pick.meal}" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
+        <span class="sr-tag">${mealLabels[pick.meal]||'Any time'}</span>
+        <span class="sr-tag" style="color:var(--ink3)">·</span>
+        <span class="sr-tag">${pick.cat}</span>`;
+      const res=document.getElementById('spinResult');res.classList.add('visible');
+      res.classList.remove('spin-anim');void res.offsetWidth;res.classList.add('spin-anim');
+      nameEl.onclick=()=>{
+        showPage('dishes',document.querySelector('[data-page="dishes"]'));
+        setTimeout(()=>{const t=document.querySelector(`[data-dish="${pick.dish}"]`);if(t)t.scrollIntoView({behavior:'smooth',block:'center'});},200);
+      };
+      spinning=false;btn.disabled=false;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+function addSpinToPlan(){
+  if(!lastSpinDish)return;
+  openPickerForPlan(null,null,lastSpinDish.dish);
+  showPage('planner',document.querySelector('[data-page="planner"]'));
+}
+
+// ══════════════════════════════════════════════════════
+// PLANNER
+// ══════════════════════════════════════════════════════
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const SLOTS=['breakfast','lunch','dinner'];
+const SLOT_LABELS={breakfast:'Bkfst',lunch:'Lunch',dinner:'Dinner'};
+
+function getWeekDates(offset){
+  const now=new Date();const day=now.getDay();
+  const mon=new Date(now);mon.setDate(now.getDate()-day+1+offset*7);
+  return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+}
+function dk(d){return d.toISOString().slice(0,10);}
+function todayKey(){return new Date().toISOString().slice(0,10);}
+
+function renderPlanner(){
+  const dates=getWeekDates(planOffset);
+  document.getElementById('weekLabel').textContent=
+    dates[0].toLocaleDateString('en',{month:'short',day:'numeric'})+' – '+dates[6].toLocaleDateString('en',{month:'short',day:'numeric'});
+  const g=document.getElementById('plannerGrid');g.innerHTML='';
+  const today=todayKey();
+  dates.forEach(date=>{
+    const key=dk(date);const isToday=key===today;
+    const plan=weekPlan[key]||{breakfast:'',lunch:'',dinner:''};
+    const card=document.createElement('div');card.className='day-card'+(isToday?' today':'');
+    card.innerHTML=`<div class="day-hdr"><span class="day-name">${DAYS[date.getDay()]}</span><span class="day-date-lbl">${date.toLocaleDateString('en',{day:'numeric',month:'short'})}${isToday?' · Today':''}</span></div>
+    <div class="meal-slots">${SLOTS.map(slot=>{
+      const dish=plan[slot]||'';
+      return`<div class="meal-slot">
+        <span class="slot-lbl">${SLOT_LABELS[slot]}</span>
+        <div class="slot-val${dish?' filled':''}" onclick="openPickerForPlan('${key}','${slot}')">
+          ${dish?`<span class="slot-emoji">${getEmoji(dish)}</span>${dish}`:'<span style="font-size:12px">Tap to add</span>'}
+        </div>
+        ${dish?`<button class="slot-clear" onclick="clearSlot('${key}','${slot}');event.stopPropagation()">✕</button>`:''}
+      </div>`;
+    }).join('')}</div>`;
+    g.appendChild(card);
+  });
+}
+function changeWeek(dir){planOffset+=dir;renderPlanner();}
+function clearSlot(key,slot){
+  if(!weekPlan[key])weekPlan[key]={breakfast:'',lunch:'',dinner:''};
+  weekPlan[key][slot]='';localStorage.setItem('akb_plan',JSON.stringify(weekPlan));renderPlanner();
+}
+
+function openPickerForPlan(key,slot,prefill){
+  pickerDk=key;pickerSlot=slot;
+  const ov=document.getElementById('pickerOverlay');ov.classList.add('open');
+  document.getElementById('pickerSub').textContent=key&&slot?DAYS[new Date(key+'T12:00:00').getDay()]+' · '+SLOT_LABELS[slot]:'Select a slot below';
+  document.getElementById('pickerSearch').value='';
+  if(prefill&&!key){renderPickerSlotSelect(prefill);}else{renderPickerList('');}
+}
+function renderPickerList(q){
+  const list=document.getElementById('pickerList');list.innerHTML='';
+  const all=categories.flatMap(cat=>cat.dishes.map(d=>({dish:d,cat:cat.name})));
+  const filtered=q?all.filter(x=>x.dish.toLowerCase().includes(q.toLowerCase())):all;
+  if(!filtered.length){list.innerHTML='<p style="text-align:center;padding:20px;color:var(--ink3);font-size:13px">No dishes found</p>';return;}
+  filtered.forEach(item=>{
+    const el=document.createElement('div');el.className='picker-item';
+    const lc=getLastCooked(item.dish);
+    el.innerHTML=`<span class="pi-em">${getEmoji(item.dish)}</span><div><div class="pi-name">${item.dish}</div><div class="pi-sub">${item.cat}${lc?' · '+fmtRel(lc):''}</div></div>`;
+    el.onclick=()=>selectPickerDish(item.dish);list.appendChild(el);
+  });
+}
+function renderPickerSlotSelect(dish){
+  const list=document.getElementById('pickerList');list.innerHTML='';
+  const dates=getWeekDates(planOffset);
+  dates.forEach(date=>{
+    const key=dk(date);
+    SLOTS.forEach(slot=>{
+      const el=document.createElement('div');el.className='picker-item';
+      const ex=(weekPlan[key]||{})[slot];
+      el.innerHTML=`<span class="pi-em">${slot==='breakfast'?'🌅':slot==='lunch'?'☀️':'🌙'}</span><div><div class="pi-name">${DAYS[date.getDay()]} · ${SLOT_LABELS[slot]}</div><div class="pi-sub">${ex?'Currently: '+ex:'Empty'}</div></div>`;
+      el.onclick=()=>{pickerDk=key;pickerSlot=slot;selectPickerDish(dish);};list.appendChild(el);
+    });
+  });
+}
+function filterPicker(){renderPickerList(document.getElementById('pickerSearch').value);}
+function selectPickerDish(dish){
+  if(!pickerDk||!pickerSlot){closePickerModal();return;}
+  if(!weekPlan[pickerDk])weekPlan[pickerDk]={breakfast:'',lunch:'',dinner:''};
+  weekPlan[pickerDk][pickerSlot]=dish;localStorage.setItem('akb_plan',JSON.stringify(weekPlan));
+  closePickerModal();renderPlanner();
+}
+function closePickerModal(){document.getElementById('pickerOverlay').classList.remove('open');}
+function handlePickerBg(e){if(e.target.id==='pickerOverlay')closePickerModal();}
+
+function showShoppingList(){
+  const dates=getWeekDates(planOffset);const items=[];
+  dates.forEach(d=>{const p=weekPlan[dk(d)]||{};SLOTS.forEach(s=>{if(p[s])items.push(`${getEmoji(p[s])} ${p[s]} (${DAYS[d.getDay()]}, ${SLOT_LABELS[s]})`);});});
+  if(!items.length){alert('No dishes planned this week yet!');return;}
+  const text='Meal Plan — '+dates[0].toLocaleDateString('en',{month:'short',day:'numeric'})+'\n\n'+items.join('\n');
+  if(navigator.share)navigator.share({title:'Meal Plan',text}).catch(()=>{});
+  else{navigator.clipboard?.writeText(text).then(()=>alert('Copied to clipboard!')).catch(()=>alert(text));}
+}
+
+// ══════════════════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════════════════
+function renderHistory(){
+  const total=cookLog.length;
+  const unique=new Set(cookLog.map(e=>e.dish)).size;
+  const wa=new Date();wa.setDate(wa.getDate()-7);
+  const week=cookLog.filter(e=>new Date(e.timestamp)>=wa).length;
+  const daySet=new Set(cookLog.map(e=>e.timestamp.slice(0,10)));
+  let streak=0;const dd=new Date();
+  while(true){const k=dd.toISOString().slice(0,10);if(!daySet.has(k))break;streak++;dd.setDate(dd.getDate()-1);}
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statUnique').textContent=unique;
+  document.getElementById('statWeek').textContent=week;
+  document.getElementById('statStreak').textContent=streak;
+  renderHeatmap();renderLog();
+}
+
+function renderHeatmap(){
+  const g=document.getElementById('hmGrid');g.innerHTML='';
+  const mEl=document.getElementById('hmMonths');mEl.innerHTML='';
+  const counts={};cookLog.forEach(e=>{const k=e.timestamp.slice(0,10);counts[k]=(counts[k]||0)+1;});
+  const today=new Date();today.setHours(0,0,0,0);
+  const start=new Date(today);start.setDate(today.getDate()-83);
+  const monthsSeen={};
+  for(let i=0;i<84;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);
+    const key=d.toISOString().slice(0,10);
+    const count=counts[key]||0;
+    const cell=document.createElement('div');cell.className='hm-cell';
+    if(key===today.toISOString().slice(0,10))cell.classList.add('today-cell');
+    if(count>=4)cell.classList.add('l4');else if(count>=3)cell.classList.add('l3');else if(count>=2)cell.classList.add('l2');else if(count>=1)cell.classList.add('l1');
+    const dishes=cookLog.filter(e=>e.timestamp.slice(0,10)===key).map(e=>e.dish);
+    const label=d.toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'});
+    cell.addEventListener('mouseenter',ev=>{
+      const tip=document.getElementById('tooltip');
+      tip.innerHTML=`<b>${label}</b>${dishes.length?'<br>'+dishes.slice(0,3).join('<br>')+(dishes.length>3?'<br>+more':''):'<br>Nothing cooked'}`;
+      tip.style.display='block';tip.style.left=Math.min(ev.clientX+8,window.innerWidth-190)+'px';tip.style.top=ev.clientY-50+'px';
+    });
+    cell.addEventListener('mouseleave',()=>{document.getElementById('tooltip').style.display='none';});
+    g.appendChild(cell);
+    const m=d.toLocaleDateString('en',{month:'short'});
+    if(d.getDate()===1&&!monthsSeen[m]){monthsSeen[m]=true;const sp=document.createElement('span');sp.textContent=m;mEl.appendChild(sp);}
+  }
+}
+
+function renderLog(){
+  const list=document.getElementById('logList');list.innerHTML='';
+  if(!cookLog.length){list.innerHTML='<div class="log-empty">No cooks logged yet.<br>Tap any dish to mark it cooked.</div>';return;}
+  const sorted=[...cookLog].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+  sorted.slice(0,50).forEach(entry=>{
+    const meal=entry.meal||getDishMeal(entry.dish);
+    const dotColor={breakfast:'#D4860A',lunch:'var(--tc)',dinner:'#3D5A80',any:'var(--green)'}[meal]||'var(--tc)';
+    const d=new Date(entry.timestamp);
+    const el=document.createElement('div');el.className='log-entry';
+    el.innerHTML=`<div class="log-avatar">${getEmoji(entry.dish)}</div>
+      <div class="log-info"><div class="log-dish">${entry.dish}</div>
+      <div class="log-time">${d.toLocaleString('en',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div></div>
+      <div class="log-dot" style="background:${dotColor}"></div>`;
+    list.appendChild(el);
+  });
+  if(cookLog.length>50){const m=document.createElement('div');m.style.cssText='text-align:center;padding:12px;color:var(--ink3);font-size:12px';m.textContent=`+ ${cookLog.length-50} more`;list.appendChild(m);}
+}
+
+// ══════════════════════════════════════════════════════
+// FRIDGE
+// ══════════════════════════════════════════════════════
+function initFridge(){
+  buildIngCatTabs();renderIngGrid();renderFridgeResults();
+}
+function buildIngCatTabs(){
+  const t=document.getElementById('ingCatTabs');t.innerHTML='';
+  [{label:'All',val:'All'},...ingredientCategories.map(c=>({label:c.name,val:c.name}))].forEach((item,i)=>{
+    const b=document.createElement('button');b.className='pill-tab'+(i===0?' active':'');b.textContent=item.label;
+    b.onclick=()=>{activeIngCat=item.val;document.querySelectorAll('#ingCatTabs .pill-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderIngGrid();};
+    t.appendChild(b);
+  });
+}
+function renderIngGrid(){
+  const g=document.getElementById('ingGrid');g.innerHTML='';
+  const q=document.getElementById('ingSearchInput').value.toLowerCase().trim();
+  ingredientCategories.forEach(cat=>{
+    if(activeIngCat!=='All'&&cat.name!==activeIngCat)return;
+    cat.items.forEach(ing=>{
+      const show=!q||ing.name.toLowerCase().includes(q)||ing.keys.some(k=>k.includes(q));
+      const p=document.createElement('div');
+      p.className='ing-pill'+(selIngredients.has(ing.keys[0])?' selected':'')+(show?'':' hidden-ing');
+      p.innerHTML=`<span class="ing-em">${ing.emoji}</span>${ing.name}`;
+      p.onclick=()=>toggleIng(ing,p);g.appendChild(p);
+    });
+  });
+}
+function toggleIng(ing,pill){
+  const k=ing.keys[0];
+  selIngredients.has(k)?selIngredients.delete(k):selIngredients.add(k);
+  renderSelectedChips();renderIngGrid();renderFridgeResults();
+}
+function renderSelectedChips(){
+  const wrap=document.getElementById('selectedChipsWrap');
+  const row=document.getElementById('chipsRow');
+  if(!selIngredients.size){wrap.style.display='none';return;}
+  wrap.style.display='block';row.innerHTML='';
+  selIngredients.forEach(key=>{
+    const ing=ingredientCategories.flatMap(c=>c.items).find(i=>i.keys[0]===key);if(!ing)return;
+    const chip=document.createElement('div');chip.className='ing-chip';
+    chip.innerHTML=`${ing.emoji} ${ing.name} <span class="chip-x">✕</span>`;
+    chip.onclick=()=>{selIngredients.delete(key);renderSelectedChips();renderIngGrid();renderFridgeResults();};
+    row.appendChild(chip);
+  });
+}
+function clearIngredients(){selIngredients.clear();renderSelectedChips();renderIngGrid();renderFridgeResults();}
+function setMatchMode(mode,el){
+  ingMatchMode=mode;document.querySelectorAll('.match-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderFridgeResults();
+}
+function dishScore(dishName){
+  const needed=dishIngredients[dishName];if(!needed)return{matched:0,total:1,pct:0};
+  const sel=[...selIngredients];
+  let matched=0;
+  needed.forEach(nk=>{
+    const has=sel.some(sk=>{const i=ingredientCategories.flatMap(c=>c.items).find(x=>x.keys[0]===sk);return i&&i.keys.some(k=>k.includes(nk)||nk.includes(k));});
+    if(has)matched++;
+  });
+  return{matched,total:needed.length,pct:Math.round((matched/needed.length)*100)};
+}
+function renderFridgeResults(){
+  const empty=document.getElementById('fridgeEmpty');const res=document.getElementById('fridgeResults');
+  if(!selIngredients.size){empty.style.display='block';res.style.display='none';return;}
+  empty.style.display='none';res.style.display='block';
+  const all=categories.flatMap(cat=>cat.dishes.map(d=>({dish:d,cat:cat.name})));
+  const scored=all.map(item=>({...item,...dishScore(item.dish)}))
+    .filter(item=>ingMatchMode==='all'?item.pct===100:item.matched>0)
+    .sort((a,b)=>b.pct-a.pct||b.matched-a.matched);
+  document.getElementById('resultsCount').innerHTML=`<strong>${scored.length}</strong> dish${scored.length!==1?'es':''} you can make`;
+  const g=document.getElementById('fridgeDishGrid');g.innerHTML='';
+  if(!scored.length){g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--ink3);font-size:13px">No matches. Try "Any" mode or add more ingredients.</div>';return;}
+  scored.forEach(item=>{
+    const isPerfect=item.pct===100;
+    const card=document.createElement('div');card.className='fr-card'+(isPerfect?' perfect':'');
+    const lc=getLastCooked(item.dish);
+    card.innerHTML=`${isPerfect?'<div class="ready-badge">Ready</div>':''}
+      <div class="fc-name">${item.dish}</div>
+      <div class="fc-ing">${item.matched}/${item.total} ingredients</div>
+      <div class="match-bar"><div class="match-fill" style="width:${item.pct}%"></div></div>
+      <div class="fc-pct">${item.pct}%${lc?' · '+fmtRel(lc):''}</div>`;
+    card.onclick=()=>{showPage('dishes',document.querySelector('[data-page="dishes"]'));setTimeout(()=>{const t=document.querySelector(`[data-dish="${item.dish}"]`);if(t)t.scrollIntoView({behavior:'smooth',block:'center'});},200);};
+    g.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// ADD DISH SHEET
+// ══════════════════════════════════════════════════════
+function openAddSheet(){
+  const sel=document.getElementById('newCat');
+  sel.innerHTML=categories.filter(c=>c.name!=='My Dishes').map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  sel.innerHTML+=`<option value="My Dishes">My Dishes</option>`;
+  document.getElementById('newName').value='';document.getElementById('newEmoji').value='';
+  document.getElementById('newMeal').value='any';document.getElementById('newName').style.borderColor='';
+  document.getElementById('addOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('newName').focus(),300);
+}
+function closeAddSheet(){document.getElementById('addOverlay').classList.remove('open');}
+function handleAddBg(e){if(e.target.id==='addOverlay')closeAddSheet();}
+function addDish(){
+  const ni=document.getElementById('newName');const name=ni.value.trim();
+  if(!name){ni.style.borderColor='var(--tc)';ni.focus();return;}
+  if(customDishes.some(d=>d.name.toLowerCase()===name.toLowerCase())){ni.style.borderColor='#D4860A';ni.focus();return;}
+  const catName=document.getElementById('newCat').value;
+  const meal=document.getElementById('newMeal').value;
+  const emoji=document.getElementById('newEmoji').value.trim();
+  customDishes.push({name,catName,meal,emoji});
+  localStorage.setItem('akb_custom',JSON.stringify(customDishes));
+  mealMap[name]=meal;
+  const t=categories.find(c=>c.name===catName)||categories.find(c=>c.name==='My Dishes');
+  if(!t.dishes.includes(name))t.dishes.push(name);
+  closeAddSheet();buildGrid();filterDishes();
+  setTimeout(()=>{const nc=document.querySelector(`[data-dish="${name}"]`);if(nc){nc.scrollIntoView({behavior:'smooth',block:'center'});nc.style.outline='2px solid var(--tc)';setTimeout(()=>nc.style.outline='',2000);}},200);
+}
+
+// ══════════════════════════════════════════════════════
+// PWA INSTALL PROMPT
+// ══════════════════════════════════════════════════════
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredInstallPrompt=e;
+  if(!localStorage.getItem('akb_install_dismissed')){
+    document.getElementById('installBanner').style.display='flex';
+  }
+});
+document.getElementById('installBtn').addEventListener('click',async()=>{
+  if(!deferredInstallPrompt)return;
+  deferredInstallPrompt.prompt();
+  const{outcome}=await deferredInstallPrompt.userChoice;
+  if(outcome==='accepted')document.getElementById('installBanner').style.display='none';
+  deferredInstallPrompt=null;
+});
+function dismissInstall(){
+  document.getElementById('installBanner').style.display='none';
+  localStorage.setItem('akb_install_dismissed','1');
+}
+window.addEventListener('appinstalled',()=>{document.getElementById('installBanner').style.display='none';});
+
+// ══════════════════════════════════════════════════════
+// SERVICE WORKER REGISTRATION
+// ══════════════════════════════════════════════════════
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js')
+      .then(()=>console.log('SW registered'))
+      .catch(e=>console.warn('SW failed:',e));
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+loadCustom();
+buildCatTabs();
+buildGrid();
+filterDishes();
+resizeWheel();
+drawWheel();
+</script>
+</body>
+</html>
