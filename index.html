@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fake Artist Goes to Work</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f; --surface: #17171b; --surface2: #1f1f25; --border: #2e2e38;
+    --accent: #f5c842; --accent2: #ff6b6b; --accent3: #6bffb8;
+    --text: #f0f0f0; --muted: #7a7a8e; --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  .screen { display: none; min-height: 100vh; padding: 20px; }
+  .screen.active { display: flex; flex-direction: column; }
+  .header { text-align: center; margin-bottom: 24px; }
+  .header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -1px; }
+  .header h1 span { color: var(--accent); }
+  .header p { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.8rem; margin-top: 4px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem; transition: all 0.15s; width: 100%; }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #ffd84d; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: var(--accent2); color: #fff; }
+  .btn-danger:hover { background: #ff4444; transform: translateY(-1px); }
+  .btn-warn { background: #ff8c00; color: #000; }
+  .btn-warn:hover { background: #ffa020; transform: translateY(-1px); }
+  .btn-sm { padding: 8px 16px; font-size: 0.82rem; width: auto; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  input, select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.9rem; padding: 12px; width: 100%; outline: none; transition: border 0.15s; }
+  input:focus, select:focus { border-color: var(--accent); }
+  input.input-error { border-color: var(--accent2) !important; }
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; font-family: 'DM Mono', monospace; letter-spacing: 0.05em; text-transform: uppercase; }
+  .field { margin-bottom: 16px; }
+  .badge-green { background: rgba(107,255,184,0.15); color: var(--accent3); border: 1px solid rgba(107,255,184,0.3); display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-family: 'DM Mono', monospace; }
+  .player-list { display: flex; flex-direction: column; gap: 8px; }
+  .player-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); }
+  .player-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .player-name { flex: 1; font-weight: 700; font-size: 0.9rem; }
+  canvas { border-radius: var(--radius); border: 2px solid var(--border); touch-action: none; display: block; background: #fff; }
+  .canvas-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
+  .turn-banner { background: var(--surface2); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 16px; text-align: center; margin-bottom: 12px; }
+  .turn-banner .tname { font-weight: 800; color: var(--accent); font-size: 1.1rem; }
+  .turn-banner .tsub { font-size: 0.75rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .word-reveal { background: var(--surface2); border-radius: 8px; padding: 14px; text-align: center; margin-bottom: 16px; border: 1px solid var(--border); }
+  .word-reveal .wlabel { font-size: 0.7rem; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; }
+  .word-reveal .wword { font-size: 1.6rem; font-weight: 800; margin-top: 4px; letter-spacing: 2px; }
+  .word-reveal .wword.fake { color: var(--accent2); letter-spacing: 4px; }
+  .vote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .vote-btn { padding: 14px; border-radius: 8px; border: 2px solid var(--border); background: var(--surface2); cursor: pointer; text-align: center; font-family: 'Syne', sans-serif; font-weight: 700; transition: all 0.15s; color: var(--text); }
+  .vote-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .vote-btn.selected { border-color: var(--accent2); background: rgba(255,107,107,0.1); color: var(--accent2); }
+  .vote-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .result-card { text-align: center; padding: 30px 20px; }
+  .result-card .emoji { font-size: 3rem; margin-bottom: 12px; }
+  .result-card h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
+  .vote-results { display: flex; flex-direction: column; gap: 8px; }
+  .vote-row { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--surface2); border-radius: 8px; }
+  .vote-row .voter { flex: 1; font-size: 0.85rem; }
+  .turn-order { display: flex; flex-direction: column; gap: 6px; }
+  .turn-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; }
+  .turn-item.current { background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.3); }
+  .turn-num { width: 22px; height: 22px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-family: 'DM Mono', monospace; flex-shrink: 0; }
+  .turn-item.current .turn-num { background: var(--accent); color: #000; }
+  .notif { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; max-width: 90vw; }
+  .notif.show { opacity: 1; }
+  .notif.err { background: var(--accent2); color: #fff; }
+  .notif.warn { background: #ff8c00; color: #000; }
+  .loading { text-align: center; padding: 40px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.85rem; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .color-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cswatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s; }
+  .cswatch.sel { border-color: #fff; transform: scale(1.2); }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .text-center { text-align: center; }
+  .text-muted { color: var(--muted); font-size: 0.85rem; font-family: 'DM Mono', monospace; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .section-title { font-size: 0.75rem; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+  .brush-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .bbtn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .bbtn.active { border-color: var(--accent); background: rgba(245,200,66,0.1); }
+  .bcircle { border-radius: 50%; background: var(--text); }
+  .gm-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; background: rgba(245,200,66,0.15); color: var(--accent); font-size: 0.7rem; font-family: 'DM Mono', monospace; border: 1px solid rgba(245,200,66,0.3); }
+  .round-pill { display: inline-flex; gap: 6px; align-items: center; background: var(--surface2); border-radius: 20px; padding: 4px 12px; font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; justify-content: center; }
+  .rdot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+  .rdot.on { background: var(--accent); }
+  #gmPwField { display: none; }
+  .pw-hint { font-size: 0.75rem; color: var(--muted); margin-top: 6px; font-family: 'DM Mono', monospace; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+  .shake { animation: shake 0.4s ease; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .pulse { animation: pulse 2s ease-in-out infinite; }
+  .scroll-area { max-height: 280px; overflow-y: auto; }
+  .scroll-area::-webkit-scrollbar { width: 4px; }
+  .scroll-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  select option { background: #1f1f25; }
+  .conn-bar { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 16px; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s infinite; }
+  .conn-dot.ok { background: var(--accent3); animation: none; }
+  .conn-dot.err { background: var(--accent2); animation: none; }
+  .live-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; background: rgba(107,255,184,0.1); color: var(--accent3); font-size: 0.7rem; font-family: 'DM Mono', monospace; border: 1px solid rgba(107,255,184,0.2); margin-left: 6px; }
+  .live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent3); animation: pulse 1s infinite; }
+  /* ghost player indicator */
+  .player-item.ghost { opacity: 0.45; }
+  .ghost-tag { font-size: 0.7rem; color: var(--accent2); font-family: 'DM Mono', monospace; margin-left: 4px; }
+  /* game-in-progress lock screen */
+  #screen-locked .lock-icon { font-size: 3rem; text-align: center; margin-bottom: 12px; }
+  /* GM takeover banner */
+  .takeover-banner { background: rgba(255,107,107,0.1); border: 1px solid var(--accent2); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; text-align: center; }
+  .takeover-banner p { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; line-height: 1.6; }
+
+  /* ── GM CONTROL PANEL (fixed bar, only visible to GM) ── */
+  #gmControlBar {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #12121666;
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    z-index: 900;
+    gap: 8px;
+    flex-direction: column;
+  }
+  #gmControlBar.visible { display: flex; }
+  #gmControlBar .gm-bar-title { font-size: 0.65rem; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; text-align: center; margin-bottom: 2px; }
+  #gmControlBar .gm-bar-btns { display: flex; gap: 8px; }
+  #gmControlBar .gm-bar-btns .btn { flex: 1; padding: 10px; font-size: 0.8rem; }
+
+  /* padding so content isn't hidden behind GM bar */
+  body.is-gm { padding-bottom: 90px; }
+
+  /* ── CONFIRM MODAL ── */
+  #confirmModal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    z-index: 9000; align-items: center; justify-content: center; padding: 24px;
+  }
+  #confirmModal.show { display: flex; }
+  #confirmModal .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 320px; width: 100%; }
+  #confirmModal h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; }
+  #confirmModal p { font-size: 0.85rem; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  #confirmModal .modal-btns { display: flex; gap: 10px; }
+  #confirmModal .modal-btns .btn { flex: 1; padding: 10px; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<div class="notif" id="notif"></div>
+
+<!-- ═══ CONFIRM MODAL ═══ -->
+<div id="confirmModal">
+  <div class="modal-box">
+    <h3 id="modalTitle">Are you sure?</h3>
+    <p id="modalDesc">This action cannot be undone.</p>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="modalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GM CONTROL BAR (fixed bottom, GM only) ═══ -->
+<div id="gmControlBar">
+  <div class="gm-bar-title">👑 GM Controls</div>
+  <div class="gm-bar-btns">
+    <button class="btn btn-warn" id="skipTurnBtn" onclick="confirmSkipTurn()" style="display:none">⏭ Skip Turn</button>
+    <button class="btn btn-danger" onclick="confirmForceReset()">🔴 Force Reset</button>
+  </div>
+</div>
+
+<!-- ═══ GAME IN PROGRESS — LOCKED ═══ -->
+<div class="screen" id="screen-locked">
+  <div class="header">
+    <h1>🎨 Fake <span>Artist</span></h1>
+    <p>goes to work</p>
+  </div>
+  <div class="card" style="text-align:center;padding:32px 20px;">
+    <div style="font-size:3rem;margin-bottom:16px;">🔒</div>
+    <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:10px;">Game In Progress</h2>
+    <p style="color:var(--muted);font-size:0.9rem;line-height:1.7;">A game is already running.<br>Wait for it to finish and join the next round!</p>
+    <div id="lockedPlayerList" style="margin-top:20px;text-align:left;"></div>
+  </div>
+</div>
+
+<!-- ═══ ROLE SELECT ═══ -->
+<div class="screen active" id="screen-role">
+  <div class="header">
+    <h1>🎨 Fake <span>Artist</span></h1>
+    <p>goes to work — multiplayer</p>
+  </div>
+  <div class="conn-bar"><div class="conn-dot" id="connDot"></div><span id="connText">Connecting to Firebase...</span></div>
+  <div class="card">
+    <div class="field">
+      <label>Your Name</label>
+      <input type="text" id="playerName" placeholder="Enter your name..." maxlength="20">
+    </div>
+    <div class="field">
+      <label>Join as</label>
+      <select id="roleSelect" onchange="onRoleChange()">
+        <option value="player">Player</option>
+        <option value="gm">Game Master (GM)</option>
+      </select>
+    </div>
+    <div class="field" id="gmPwField">
+      <label>🔐 GM Password</label>
+      <input type="password" id="gmPwInput" placeholder="Enter GM password..." maxlength="30">
+      <p class="pw-hint">Only the Game Master needs this.</p>
+    </div>
+    <button class="btn btn-primary" id="joinBtn" onclick="joinGame()" disabled>Join Game</button>
+    <p class="text-muted mt-8 text-center">Share this page's URL with your team!</p>
+  </div>
+  <div class="card">
+    <p class="section-title">How to Play</p>
+    <p style="font-size:0.85rem;color:var(--muted);line-height:1.8;">
+      🎭 One player is secretly the <strong style="color:var(--accent2)">Fake Artist</strong> — they don't know the word.<br>
+      🖊️ Each player draws <strong>one stroke</strong> per round on a shared canvas.<br>
+      🕵️ After 2 rounds, everyone votes who the fake is.<br>
+      🏆 Real artists win by catching the fake. Fake wins by hiding!
+    </p>
+  </div>
+</div>
+
+<!-- ═══ LOBBY ═══ -->
+<div class="screen" id="screen-lobby">
+  <div class="header">
+    <h1>🎨 Fake <span>Artist</span></h1>
+    <p id="lobbySubtitle">Lobby</p>
+  </div>
+  <div id="gmPanel" style="display:none">
+    <div class="card">
+      <p class="section-title">Game Setup <span class="gm-badge">👑 GM</span></p>
+      <div class="field">
+        <label>Category</label>
+        <input type="text" id="catInput" placeholder="e.g. Animal, Food, Place..." maxlength="30">
+      </div>
+      <div class="field">
+        <label>Secret Word</label>
+        <input type="text" id="wrdInput" placeholder="Players won't see this..." maxlength="30">
+      </div>
+      <p id="gmInfo" class="text-muted mt-8" style="font-size:0.8rem;margin-bottom:12px;"></p>
+      <button class="btn btn-primary" id="startBtn" onclick="startGame()" disabled>Start Game</button>
+      <button class="btn btn-secondary mt-8" onclick="showNotif('📣 Nudge sent!')">📣 Nudge everyone to join</button>
+    </div>
+  </div>
+  <div class="card">
+    <p class="section-title">Players in Lobby</p>
+    <div id="lobbyList" class="player-list scroll-area">
+      <div class="loading"><span class="spinner"></span>Waiting for players...</div>
+    </div>
+  </div>
+  <div id="playerWait" class="card text-center" style="display:none">
+    <p style="font-size:1.1rem;margin-bottom:6px;">✅ You're in!</p>
+    <p class="text-muted pulse">Waiting for the GM to start...</p>
+  </div>
+  <!-- GM takeover — shown when GM is gone and no GM present -->
+  <div id="takeoverBanner" class="takeover-banner" style="display:none">
+    <p>⚠️ The Game Master appears to have left.<br>Someone needs to take over as GM to continue.</p>
+    <button class="btn btn-warn" onclick="claimGM()" style="width:auto;padding:10px 24px;">👑 Claim GM Role</button>
+  </div>
+</div>
+
+<!-- ═══ DRAWING ═══ -->
+<div class="screen" id="screen-drawing">
+  <div class="header" style="margin-bottom:10px;">
+    <h1>🎨 Fake <span>Artist</span></h1>
+    <div class="round-pill"><span class="rdot" id="rd1"></span><span class="rdot" id="rd2"></span><span style="margin-left:4px;">Round <span id="rnum">1</span> of 2</span></div>
+  </div>
+  <div class="word-reveal">
+    <div class="wlabel">Category: <span id="catDisplay"></span></div>
+    <div class="wword" id="wrdDisplay"></div>
+  </div>
+  <div class="turn-banner">
+    <div class="tname" id="turnName">...</div>
+    <div class="tsub" id="turnSub">is drawing</div>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="gameCanvas" width="340" height="340" style="cursor:crosshair;"></canvas>
+  </div>
+  <div id="drawControls" style="display:none">
+    <div class="card" style="padding:14px;">
+      <div class="brush-row">
+        <span class="text-muted" style="font-size:0.75rem;">SIZE:</span>
+        <button class="bbtn active" id="bs1" onclick="setBrush(3,'bs1')"><div class="bcircle" style="width:6px;height:6px;"></div></button>
+        <button class="bbtn" id="bs2" onclick="setBrush(6,'bs2')"><div class="bcircle" style="width:10px;height:10px;"></div></button>
+        <button class="bbtn" id="bs3" onclick="setBrush(12,'bs3')"><div class="bcircle" style="width:16px;height:16px;"></div></button>
+        <span class="text-muted" style="font-size:0.75rem;margin-left:6px;">COLOR:</span>
+        <div id="palette" class="color-swatches"></div>
+      </div>
+      <button class="btn btn-primary" onclick="submitStroke()">✅ Submit My Stroke</button>
+      <p class="text-muted mt-8 text-center" style="font-size:0.75rem;">Draw one stroke, then submit</p>
+    </div>
+  </div>
+  <div id="watchMsg" class="card text-center" style="display:none">
+    <p class="text-muted pulse">👀 Watching... not your turn yet</p>
+  </div>
+  <div class="card" style="padding:14px;margin-top:8px;">
+    <p class="section-title">Turn Order</p>
+    <div id="turnOrderEl" class="turn-order"></div>
+  </div>
+</div>
+
+<!-- ═══ VOTING ═══ -->
+<div class="screen" id="screen-voting">
+  <div class="header">
+    <h1>🕵️ Vote!</h1>
+    <p>Who is the Fake Artist?</p>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="voteCanvas" width="340" height="240"></canvas>
+  </div>
+  <div class="card">
+    <p class="section-title">Cast Your Vote</p>
+    <div id="voteGrid" class="vote-grid"></div>
+    <div id="fakeGuessWrap" style="display:none">
+      <div class="divider"></div>
+      <div class="field">
+        <label>🎭 You're the Fake — guess the word:</label>
+        <input type="text" id="fakeGuessInput" placeholder="What was the word?" maxlength="30">
+      </div>
+    </div>
+    <button class="btn btn-danger mt-8" id="voteSubmitBtn" onclick="submitVote()">Submit Vote</button>
+    <div id="voteWait" style="display:none" class="text-center mt-8">
+      <p class="text-muted pulse">✅ Voted! Waiting for others...</p>
+    </div>
+  </div>
+  <div class="card">
+    <p class="section-title">Votes In</p>
+    <p id="voteProgress" class="text-muted" style="font-family:'DM Mono',monospace;font-size:0.85rem;"></p>
+  </div>
+</div>
+
+<!-- ═══ RESULTS ═══ -->
+<div class="screen" id="screen-results">
+  <div class="header"><h1>🏆 Results</h1></div>
+  <div class="card result-card">
+    <div class="emoji" id="resEmoji">🎉</div>
+    <h2 id="resTitle">...</h2>
+    <p id="resDesc" style="color:var(--muted);font-size:0.9rem;margin-top:8px;"></p>
+  </div>
+  <div class="card">
+    <p class="section-title">The Word Was</p>
+    <div style="text-align:center;font-size:1.8rem;font-weight:800;color:var(--accent);letter-spacing:3px;" id="finalWord"></div>
+    <div class="mt-8 text-center"><span class="text-muted" style="font-size:0.8rem;">Fake Artist: </span><span id="finalFake" style="font-weight:700;color:var(--accent2);"></span></div>
+    <div id="fakeGuessRes" class="mt-8 text-center" style="font-size:0.85rem;"></div>
+  </div>
+  <div class="card">
+    <p class="section-title">How Everyone Voted</p>
+    <div id="voteBreakdown" class="vote-results scroll-area"></div>
+  </div>
+  <div class="card">
+    <p class="section-title">Final Canvas</p>
+    <div class="canvas-wrap"><canvas id="resCanvas" width="340" height="300"></canvas></div>
+  </div>
+  <div id="gmRestartPanel" style="display:none;margin-bottom:16px;">
+    <button class="btn btn-primary" onclick="restartGame()">🔄 Play Again</button>
+  </div>
+  <div id="playerRestart" class="card text-center" style="display:none;">
+    <p class="text-muted pulse">Waiting for GM to start a new round...</p>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── CONFIG ──
+const firebaseConfig = {
+  apiKey: "AIzaSyAh3ampE9JbY_QXiFyJaxON7LvBrj3Nd2g",
+  authDomain: "fake-artist-game-44eae.firebaseapp.com",
+  databaseURL: "https://fake-artist-game-44eae-default-rtdb.firebaseio.com",
+  projectId: "fake-artist-game-44eae",
+  storageBucket: "fake-artist-game-44eae.firebasestorage.app",
+  messagingSenderId: "859753090041",
+  appId: "1:859753090041:web:c149f1238a083e3f6d0b28"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+const GAME_REF = ref(db, 'gameState');
+const GM_PW    = 'VE26';
+const COLORS   = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e91e63','#00bcd4','#8bc34a','#ff5722','#607d8b'];
+const HEARTBEAT_INTERVAL = 10000; // ping every 10s
+const GHOST_THRESHOLD    = 30000; // inactive after 30s
+const STALE_THRESHOLD    = 4 * 60 * 60 * 1000; // 4 hours
+
+// ── LOCAL STATE ──
+let myName='', myId='', isGM=false, curScreen='role';
+let drawing=false, curPath=[], brushSz=3, myColor=COLORS[0];
+let stroked=false, myVote=null, voted=false;
+let cvs=null, ctx=null;
+let lastPhase='', lastTurnIdx=-1, lastStrokeCount=0, lastRound=0;
+let modalCallback=null;
+let heartbeatTimer=null;
+let gmCheckTimer=null;
+
+// ── CONNECTIVITY ──
+onValue(ref(db,'.info/connected'), snap => {
+  const ok=snap.val();
+  document.getElementById('connDot').className='conn-dot'+(ok?' ok':' err');
+  document.getElementById('connText').textContent=ok?'Connected ✓':'Reconnecting...';
+  document.getElementById('joinBtn').disabled=!ok;
+});
+
+// ── DB HELPERS ──
+async function loadState(){ const s=await get(GAME_REF); return s.exists()?s.val():null; }
+async function saveState(s){ await set(GAME_REF,s); }
+function freshState(){ return {phase:'lobby',players:[],word:'',category:'',strokes:[],currentPlayerIndex:0,round:1,votes:{},fakeGuess:'',fakeId:'',winner:'',turnOrder:[],skippedPlayers:[],heartbeats:{},createdAt:Date.now()}; }
+
+// ══════════════════════════════════════════════════════
+//  FIX 5 — DUPLICATE NAME CHECK
+// ══════════════════════════════════════════════════════
+function isDuplicateName(s, name, excludeId) {
+  return s.players && s.players.some(p => p.name === name && p.id !== excludeId);
+}
+
+// ══════════════════════════════════════════════════════
+//  FIX 4 — LOCK JOINING MID-GAME
+// ══════════════════════════════════════════════════════
+function isGameInProgress(s) {
+  return s && ['drawing','voting'].includes(s.phase);
+}
+
+function showLockedScreen(s) {
+  go('locked');
+  const el = document.getElementById('lockedPlayerList');
+  if (s.players && s.players.length) {
+    el.innerHTML = '<p class="section-title" style="margin-bottom:8px;">Currently Playing</p>' +
+      s.players.filter(p=>!p.isGM).map(p=>`
+        <div class="player-item" style="margin-bottom:6px;">
+          <div class="player-dot" style="background:${p.color}"></div>
+          <div class="player-name">${p.name}</div>
+        </div>`).join('');
+  }
+  // Keep polling so when game ends they auto-advance to lobby
+  onValue(GAME_REF, snap => {
+    if (!snap.exists()) return;
+    const ns = snap.val();
+    if (!isGameInProgress(ns)) {
+      // Game ended — reload so they can join fresh
+      location.reload();
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  FIX 8 — STALE STATE AUTO-RESET
+// ══════════════════════════════════════════════════════
+function isStaleState(s) {
+  if (!s || !s.createdAt) return false;
+  return (Date.now() - s.createdAt) > STALE_THRESHOLD;
+}
+
+// ══════════════════════════════════════════════════════
+//  FIX 7 — HEARTBEAT SYSTEM
+//  Each player pings /heartbeats/{id} every 10s.
+//  Players not seen in 30s are shown as ghost in lobby.
+// ══════════════════════════════════════════════════════
+function startHeartbeat() {
+  const hbRef = ref(db, `gameState/heartbeats/${myId}`);
+  const ping = () => set(hbRef, Date.now());
+  ping(); // immediate first ping
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(ping, HEARTBEAT_INTERVAL);
+}
+
+function isGhost(s, playerId) {
+  if (!s.heartbeats || !s.heartbeats[playerId]) return false;
+  return (Date.now() - s.heartbeats[playerId]) > GHOST_THRESHOLD;
+}
+
+function getActivePlayerIds(s) {
+  // Active = has a recent heartbeat OR just joined (no heartbeat yet but in players list)
+  if (!s.players) return [];
+  return s.players
+    .filter(p => !p.isGM && !isGhost(s, p.id))
+    .map(p => p.id);
+}
+
+// ══════════════════════════════════════════════════════
+//  FIX 6 — GM TAKEOVER
+//  If no GM has heartbeated in 60s, show takeover banner.
+// ══════════════════════════════════════════════════════
+const GM_GHOST_THRESHOLD = 60000; // 60s for GM
+
+function checkGMPresence(s) {
+  if (isGM) return; // I'm the GM, no takeover needed
+  const gm = s.players && s.players.find(p => p.isGM);
+  if (!gm) { showTakeover(true); return; }
+  const gmLastSeen = s.heartbeats && s.heartbeats[gm.id];
+  const gmGone = !gmLastSeen || (Date.now() - gmLastSeen) > GM_GHOST_THRESHOLD;
+  showTakeover(gmGone && curScreen === 'lobby');
+}
+
+function showTakeover(show) {
+  const el = document.getElementById('takeoverBanner');
+  if (el) el.style.display = show ? 'block' : 'none';
+}
+
+window.claimGM = async function() {
+  const s = await loadState(); if (!s) return;
+  // Remove old GM
+  s.players = s.players.map(p => p.isGM ? {...p, isGM: false} : p);
+  // Make me GM
+  const me = s.players.find(p => p.id === myId);
+  if (me) { me.isGM = true; }
+  await saveState(s);
+  isGM = true;
+  showTakeover(false);
+  document.getElementById('gmPanel').style.display = 'block';
+  document.getElementById('playerWait').style.display = 'none';
+  showGMBar(s.phase);
+  showNotif('👑 You are now the Game Master!');
+};
+
+// ══════════════════════════════════════════════════════
+//  FIX 1 & 2 — GM CONTROL BAR + CONFIRM MODAL
+// ══════════════════════════════════════════════════════
+
+function showGMBar(phase) {
+  if (!isGM) return;
+  const bar = document.getElementById('gmControlBar');
+  bar.classList.add('visible');
+  document.body.classList.add('is-gm');
+  // Skip Turn only relevant during drawing
+  document.getElementById('skipTurnBtn').style.display = phase==='drawing' ? 'flex' : 'none';
+}
+
+function hideGMBar() {
+  document.getElementById('gmControlBar').classList.remove('visible');
+  document.body.classList.remove('is-gm');
+}
+
+// Confirm modal helpers
+function showModal(title, desc, confirmLabel, confirmClass, cb) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalDesc').textContent = desc;
+  const btn = document.getElementById('modalConfirmBtn');
+  btn.textContent = confirmLabel;
+  btn.className = 'btn ' + confirmClass;
+  modalCallback = cb;
+  document.getElementById('confirmModal').classList.add('show');
+}
+window.closeModal = function() {
+  document.getElementById('confirmModal').classList.remove('show');
+  modalCallback = null;
+};
+document.getElementById('modalConfirmBtn').onclick = function() {
+  closeModal();
+  if (modalCallback) modalCallback();
+};
+
+// ── FIX 1: GM SKIP TURN ──
+window.confirmSkipTurn = function() {
+  showModal(
+    '⏭ Skip Current Turn?',
+    'The current player\'s turn will be skipped and the game will advance to the next player. No stroke will be recorded for them.',
+    'Skip Turn',
+    'btn-warn',
+    doSkipTurn
+  );
+};
+
+async function doSkipTurn() {
+  const s = await loadState(); if (!s) return;
+  if (s.phase !== 'drawing') { showNotif('Nothing to skip right now', true); return; }
+
+  const skipped = s.turnOrder[s.currentPlayerIndex % s.turnOrder.length];
+  const skippedPlayer = s.players.find(p => p.id === skipped);
+
+  // Record skip
+  if (!s.skippedPlayers) s.skippedPlayers = [];
+  s.skippedPlayers.push(skipped);
+
+  // Advance turn
+  s.currentPlayerIndex++;
+  if (s.currentPlayerIndex >= s.turnOrder.length) {
+    if (s.round === 1) { s.round = 2; s.currentPlayerIndex = 0; }
+    else { s.phase = 'voting'; }
+  }
+
+  await saveState(s);
+  showNotif(`⏭ Skipped ${skippedPlayer?.name || 'player'}`, false);
+}
+
+// ── FIX 2: GM FORCE RESET ──
+window.confirmForceReset = function() {
+  showModal(
+    '🔴 Force Reset Game?',
+    'This will immediately end the current game and return everyone to the lobby. All progress, strokes, and votes will be lost. This cannot be undone.',
+    '🔴 Reset Everything',
+    'btn-danger',
+    doForceReset
+  );
+};
+
+async function doForceReset() {
+  const s = await loadState();
+  const players = s?.players || [];
+  const fresh = freshState();
+  fresh.players = players; // keep player list
+  await saveState(fresh);
+  voted = false; myVote = null; stroked = false;
+  if (document.getElementById('catInput')) document.getElementById('catInput').value = '';
+  if (document.getElementById('wrdInput')) document.getElementById('wrdInput').value = '';
+  showNotif('🔴 Game reset by GM');
+}
+
+// ══════════════════════════════════════════════════════
+//  FIX 3 — ACTIVE VOTER COUNT (ghost player fix)
+//  Votes complete when all ACTIVE players (those who
+//  submitted at least one stroke OR have been seen in
+//  the last phase) have voted — not the full player list.
+//  Simplest reliable proxy: turnOrder = active players.
+// ══════════════════════════════════════════════════════
+function getActiveVoterIds(s) {
+  // turnOrder only contains players who were present when game started
+  // This naturally excludes anyone who joined after or was never in the game
+  return s.turnOrder || [];
+}
+
+function checkVotingComplete(s) {
+  const active = getActiveVoterIds(s);
+  const voted = Object.keys(s.votes || {});
+  // All active players have voted
+  return active.length > 0 && active.every(id => voted.includes(id));
+}
+
+// ── REAL-TIME LISTENER ──
+function startListening() {
+  onValue(GAME_REF, snap => {
+    if (!snap.exists()) return;
+    handleStateChange(snap.val());
+  });
+}
+
+function handleStateChange(s) {
+  if (!s) return;
+  if (s.phase === 'lobby') {
+    if (curScreen !== 'lobby') { go('lobby'); lobbyUI(s); }
+    else renderPlayers(s);
+    showGMBar('lobby');
+  }
+  else if (s.phase === 'drawing') {
+    if (curScreen !== 'drawing') {
+      go('drawing'); setupDrawing(s);
+      lastPhase='drawing'; lastTurnIdx=s.currentPlayerIndex; lastStrokeCount=(s.strokes||[]).length; lastRound=s.round;
+    } else {
+      const strokesChanged=(s.strokes||[]).length!==lastStrokeCount;
+      const turnChanged=s.currentPlayerIndex!==lastTurnIdx||s.round!==lastRound;
+      if (strokesChanged) { if(ctx&&cvs)drawStrokes(ctx,cvs.width,cvs.height,s.strokes); lastStrokeCount=(s.strokes||[]).length; }
+      if (turnChanged) {
+        document.getElementById('rd1').className='rdot'+(s.round>=1?' on':'');
+        document.getElementById('rd2').className='rdot'+(s.round>=2?' on':'');
+        document.getElementById('rnum').textContent=s.round;
+        updateTurn(s); renderOrder(s);
+        lastTurnIdx=s.currentPlayerIndex; lastRound=s.round;
+      }
+    }
+    showGMBar('drawing');
+  }
+  else if (s.phase === 'voting') {
+    if (curScreen !== 'voting') { go('voting'); setupVoting(s); }
+    else updateVoteProgress(s);
+    showGMBar('voting');
+  }
+  else if (s.phase === 'results') {
+    if (curScreen !== 'results') { go('results'); setupResults(s); }
+    showGMBar('results');
+  }
+}
+
+// ── NOTIF ──
+let nTimer=null;
+function showNotif(msg,isErr=false,isWarn=false){
+  const el=document.getElementById('notif');
+  el.textContent=msg;
+  el.className='notif show'+(isErr?' err':isWarn?' warn':'');
+  if(nTimer)clearTimeout(nTimer);
+  nTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
+window.showNotif=showNotif;
+
+// ── SCREENS ──
+function go(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  curScreen=name;
+}
+
+// ── ROLE CHANGE ──
+window.onRoleChange=function(){
+  const gm=document.getElementById('roleSelect').value==='gm';
+  document.getElementById('gmPwField').style.display=gm?'block':'none';
+  if(!gm){document.getElementById('gmPwInput').value='';document.getElementById('gmPwInput').classList.remove('input-error');}
+};
+
+// ── JOIN ──
+window.joinGame=async function(){
+  const name=document.getElementById('playerName').value.trim();
+  if(!name){showNotif('Enter your name!',true);return;}
+  const wantsGM=document.getElementById('roleSelect').value==='gm';
+  if(wantsGM){
+    const pw=document.getElementById('gmPwInput').value.trim();
+    if(pw!==GM_PW){
+      const el=document.getElementById('gmPwInput');
+      el.classList.add('input-error','shake');
+      setTimeout(()=>el.classList.remove('shake'),500);
+      showNotif('❌ Wrong GM password!',true);return;
+    }
+  }
+  myName=name;isGM=wantsGM;
+  document.getElementById('joinBtn').disabled=true;
+  document.getElementById('joinBtn').textContent='Joining...';
+  let s=await loadState();
+
+  // FIX 8: stale state auto-reset
+  if (s && isStaleState(s)) {
+    s = freshState();
+    await saveState(s);
+    showNotif('♻️ Old session cleared', false);
+  }
+
+  if(!s||!s.phase) s=freshState();
+
+  // FIX 4: lock joining mid-game (unless rejoining existing session)
+  const existingPlayer = s.players && s.players.find(p=>p.name===myName);
+  if (!existingPlayer && isGameInProgress(s)) {
+    document.getElementById('joinBtn').disabled=false;
+    document.getElementById('joinBtn').textContent='Join Game';
+    showLockedScreen(s);
+    return;
+  }
+
+  // FIX 5: duplicate name check
+  if (!existingPlayer && isDuplicateName(s, myName, null)) {
+    document.getElementById('joinBtn').disabled=false;
+    document.getElementById('joinBtn').textContent='Join Game';
+    const nameEl=document.getElementById('playerName');
+    nameEl.classList.add('input-error','shake');
+    setTimeout(()=>nameEl.classList.remove('input-error','shake'),500);
+    showNotif('❌ That name is already taken!',true);
+    return;
+  }
+
+  if(existingPlayer){myId=existingPlayer.id;isGM=existingPlayer.isGM;myColor=existingPlayer.color;}
+  else{
+    myId=name+'_'+Date.now();
+    myColor=COLORS[(s.players||[]).length%COLORS.length];
+    if(!s.players)s.players=[];
+    s.players.push({id:myId,name:myName,isGM,color:myColor,joinedAt:Date.now()});
+    await saveState(s);
+  }
+  document.getElementById('joinBtn').disabled=false;
+  document.getElementById('joinBtn').textContent='Join Game';
+  go('lobby');lobbyUI(s);
+  startHeartbeat(); // FIX 7: start pinging
+  startListening();
+};
+
+// ── LOBBY ──
+function lobbyUI(s){
+  document.getElementById('lobbySubtitle').innerHTML=(isGM?'👑 Game Master':'👤 '+myName)+' <span class="live-badge"><span class="live-dot"></span>LIVE</span>';
+  document.getElementById('gmPanel').style.display=isGM?'block':'none';
+  document.getElementById('playerWait').style.display=isGM?'none':'block';
+  renderPlayers(s);
+}
+
+function renderPlayers(s){
+  const el=document.getElementById('lobbyList');
+  if(!s||!s.players||!s.players.length){el.innerHTML='<div class="loading"><span class="spinner"></span>Waiting for players...</div>';return;}
+  el.innerHTML=s.players.map(p=>{
+    const ghost=isGhost(s,p.id);
+    return `<div class="player-item${ghost?' ghost':''}">
+      <div class="player-dot" style="background:${p.color}"></div>
+      <div class="player-name">${p.name}${p.id===myId?' (you)':''}${ghost?'<span class="ghost-tag">● away</span>':''}</div>
+      <div>${p.isGM?'<span class="gm-badge">👑 GM</span>':'<span class="badge-green">Player</span>'}</div>
+    </div>`;
+  }).join('');
+  if(isGM){
+    const n=s.players.filter(p=>!p.isGM&&!isGhost(s,p.id)).length;
+    const total=s.players.filter(p=>!p.isGM).length;
+    document.getElementById('gmInfo').textContent=`${n} active player${n!==1?'s':''} (${total} total)${n<3?' — need at least 3 active':' — ready! 🎉'}`;
+    document.getElementById('startBtn').disabled=n<3;
+  }
+  // FIX 6: check if GM is present
+  checkGMPresence(s);
+}
+
+// ── START ──
+window.startGame=async function(){
+  const cat=document.getElementById('catInput').value.trim();
+  const wrd=document.getElementById('wrdInput').value.trim();
+  if(!cat){showNotif('Enter a category!',true);return;}
+  if(!wrd){showNotif('Enter a secret word!',true);return;}
+  const s=await loadState();if(!s)return;
+  const players=s.players.filter(p=>!p.isGM);
+  if(players.length<3){showNotif('Need at least 3 players!',true);return;}
+  const minPos=Math.min(2,players.length-1);
+  const fi=minPos+Math.floor(Math.random()*(players.length-minPos));
+  s.phase='drawing';s.word=wrd;s.category=cat;s.fakeId=players[fi].id;
+  s.currentPlayerIndex=0;s.round=1;s.strokes=[];s.votes={};s.fakeGuess='';s.winner='';
+  s.turnOrder=players.map(p=>p.id);
+  s.skippedPlayers=[];
+  await saveState(s);
+  showNotif('🎨 Game started!');
+};
+
+// ── DRAWING ──
+function setupDrawing(s){
+  document.getElementById('catDisplay').textContent=s.category;
+  const fake=s.fakeId===myId;
+  const wd=document.getElementById('wrdDisplay');
+  wd.textContent=fake?'? ? ?':s.word.toUpperCase();
+  wd.className='wword'+(fake?' fake':'');
+  document.getElementById('rd1').className='rdot'+(s.round>=1?' on':'');
+  document.getElementById('rd2').className='rdot'+(s.round>=2?' on':'');
+  document.getElementById('rnum').textContent=s.round;
+  cvs=document.getElementById('gameCanvas');
+  ctx=cvs.getContext('2d');
+  drawStrokes(ctx,cvs.width,cvs.height,s.strokes);
+  bindCanvas(cvs);
+  updateTurn(s);renderOrder(s);
+  stroked=false;curPath=[];
+}
+
+function updateTurn(s){
+  if(!s.turnOrder||!s.turnOrder.length)return;
+  const cid=s.turnOrder[s.currentPlayerIndex%s.turnOrder.length];
+  const cp=s.players.find(p=>p.id===cid);
+  const mine=cid===myId;
+  document.getElementById('turnName').textContent=mine?'🖊️ Your Turn!':(cp?.name||'...');
+  document.getElementById('turnSub').textContent=mine?'Draw one stroke then submit':'is drawing...';
+  document.getElementById('drawControls').style.display=mine?'block':'none';
+  document.getElementById('watchMsg').style.display=mine?'none':'block';
+  if(mine){
+    document.getElementById('palette').innerHTML=COLORS.slice(0,8).map(c=>
+      `<div class="cswatch${c===myColor?' sel':''}" style="background:${c}" onclick="setColor('${c}',this)"></div>`).join('');
+    if(cvs)cvs.style.cursor='crosshair';
+    stroked=false;curPath=[];
+  } else {if(cvs)cvs.style.cursor='default';}
+}
+
+function renderOrder(s){
+  if(!s.turnOrder)return;
+  const cid=s.turnOrder[s.currentPlayerIndex%s.turnOrder.length];
+  const skipped=s.skippedPlayers||[];
+  document.getElementById('turnOrderEl').innerHTML=s.turnOrder.map((pid,i)=>{
+    const p=s.players.find(x=>x.id===pid);const cur=pid===cid;
+    const wasSkipped=skipped.includes(pid);
+    return `<div class="turn-item${cur?' current':''}">
+      <div class="turn-num" style="${cur?'':'background:'+(p?.color||'#444')+';color:#000'}">${i+1}</div>
+      <div style="flex:1;font-size:0.85rem;font-weight:${cur?700:400};opacity:${wasSkipped?.6:1}">${p?.name||pid}${pid===myId?' (you)':''}${wasSkipped?' <span style="font-size:0.7rem;color:var(--accent2);">(skipped)</span>':''}</div>
+      <div style="width:10px;height:10px;border-radius:50%;background:${p?.color||'#444'}"></div>
+      ${cur?'<span style="font-size:0.7rem;color:var(--accent)">●</span>':''}
+    </div>`;
+  }).join('');
+}
+
+// ── CANVAS ──
+function bindCanvas(c){
+  const nc=c.cloneNode(true);c.parentNode.replaceChild(nc,c);
+  cvs=nc;ctx=nc.getContext('2d');
+  nc.addEventListener('mousedown',e=>{if(curScreen==='drawing')startD(pos(e,nc));});
+  nc.addEventListener('mousemove',e=>{if(curScreen==='drawing')contD(pos(e,nc));});
+  nc.addEventListener('mouseup',endD);nc.addEventListener('mouseleave',endD);
+  nc.addEventListener('touchstart',e=>{e.preventDefault();if(curScreen==='drawing')startD(pos(e,nc));},{passive:false});
+  nc.addEventListener('touchmove',e=>{e.preventDefault();if(curScreen==='drawing')contD(pos(e,nc));},{passive:false});
+  nc.addEventListener('touchend',endD);
+}
+function pos(e,c){const r=c.getBoundingClientRect(),sx=c.width/r.width,sy=c.height/r.height,cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY;return{x:(cx-r.left)*sx,y:(cy-r.top)*sy};}
+
+function startD(p){
+  get(GAME_REF).then(snap=>{
+    if(!snap.exists())return;const s=snap.val();
+    if(!s.turnOrder)return;
+    if(s.turnOrder[s.currentPlayerIndex%s.turnOrder.length]!==myId)return;
+    if(stroked){showNotif('Already drew — hit submit!',true);return;}
+    drawing=true;curPath=[p];
+    ctx.beginPath();ctx.moveTo(p.x,p.y);
+    ctx.strokeStyle=myColor;ctx.lineWidth=brushSz;ctx.lineCap='round';ctx.lineJoin='round';
+  });
+}
+function contD(p){if(!drawing||!ctx)return;curPath.push(p);ctx.lineTo(p.x,p.y);ctx.stroke();}
+function endD(){if(!drawing)return;drawing=false;if(curPath.length>1)stroked=true;}
+window.setBrush=function(sz,id){brushSz=sz;document.querySelectorAll('.bbtn').forEach(b=>b.classList.remove('active'));document.getElementById(id).classList.add('active');};
+window.setColor=function(c,el){myColor=c;document.querySelectorAll('.cswatch').forEach(s=>s.classList.remove('sel'));el.classList.add('sel');};
+
+window.submitStroke=async function(){
+  if(!stroked||curPath.length<2){showNotif('Draw something first!',true);return;}
+  const snap=await get(GAME_REF);if(!snap.exists())return;
+  const s=snap.val();
+  if(s.turnOrder[s.currentPlayerIndex%s.turnOrder.length]!==myId){showNotif("Not your turn!",true);return;}
+  const strokes=s.strokes||[];
+  strokes.push({playerId:myId,color:myColor,size:brushSz,path:curPath});
+  s.strokes=strokes;
+  s.currentPlayerIndex++;
+  if(s.currentPlayerIndex>=s.turnOrder.length){
+    if(s.round===1){s.round=2;s.currentPlayerIndex=0;}
+    else{s.phase='voting';}
+  }
+  await saveState(s);
+  stroked=false;curPath=[];
+  showNotif('✅ Stroke submitted!');
+};
+
+function drawStrokes(c,w,h,strokes){
+  c.clearRect(0,0,w,h);c.fillStyle='#fff';c.fillRect(0,0,w,h);
+  if(!strokes)return;
+  strokes.forEach(s=>{
+    if(!s.path||s.path.length<2)return;
+    c.beginPath();c.moveTo(s.path[0].x,s.path[0].y);
+    s.path.forEach(pt=>c.lineTo(pt.x,pt.y));
+    c.strokeStyle=s.color;c.lineWidth=s.size||3;c.lineCap='round';c.lineJoin='round';c.stroke();
+  });
+}
+
+// ── VOTING ──
+function setupVoting(s){
+  const vc=document.getElementById('voteCanvas');
+  drawStrokes(vc.getContext('2d'),vc.width,vc.height,s.strokes);
+  // Only show active players (those in turnOrder) as vote options
+  const activeIds=getActiveVoterIds(s);
+  const pl=s.players.filter(p=>activeIds.includes(p.id)&&p.id!==myId);
+  document.getElementById('voteGrid').innerHTML=pl.map(p=>`
+    <button class="vote-btn${myVote===p.id?' selected':''}" id="vb_${p.id}" onclick="pickVote('${p.id}')" ${voted?'disabled':''}>
+      <div style="width:12px;height:12px;border-radius:50%;background:${p.color};margin:0 auto 6px;"></div>${p.name}
+    </button>`).join('');
+  document.getElementById('fakeGuessWrap').style.display=s.fakeId===myId?'block':'none';
+  updateVoteProgress(s);
+  if(s.votes&&s.votes[myId]){voted=true;document.getElementById('voteSubmitBtn').style.display='none';document.getElementById('voteWait').style.display='block';}
+}
+
+window.pickVote=function(pid){
+  if(voted)return;myVote=pid;
+  document.querySelectorAll('.vote-btn').forEach(b=>b.classList.remove('selected'));
+  const b=document.getElementById('vb_'+pid);if(b)b.classList.add('selected');
+};
+
+function updateVoteProgress(s){
+  const active=getActiveVoterIds(s);
+  const done=active.filter(id=>s.votes&&s.votes[id]).length;
+  document.getElementById('voteProgress').textContent=`${done} / ${active.length} active players voted`;
+}
+
+window.submitVote=async function(){
+  if(!myVote){showNotif('Pick someone first!',true);return;}
+  const snap=await get(GAME_REF);if(!snap.exists())return;
+  const s=snap.val();
+  s.votes=s.votes||{};
+  s.votes[myId]=myVote;
+  if(s.fakeId===myId)s.fakeGuess=document.getElementById('fakeGuessInput').value.trim();
+  // FIX 3: use active voters only to determine completion
+  if(checkVotingComplete(s)){s.phase='results';s.winner=calcWinner(s);}
+  await saveState(s);
+  voted=true;
+  document.getElementById('voteSubmitBtn').style.display='none';
+  document.getElementById('voteWait').style.display='block';
+  showNotif('Vote submitted!');
+};
+
+function calcWinner(s){
+  const t={};Object.values(s.votes).forEach(v=>{t[v]=(t[v]||0)+1;});
+  let mx=0,mv=null;Object.entries(t).forEach(([p,c])=>{if(c>mx){mx=c;mv=p;}});
+  const caught=mv===s.fakeId;
+  const guessed=s.fakeGuess&&s.fakeGuess.toLowerCase().trim()===s.word.toLowerCase().trim();
+  if(!caught)return'fake_survived';if(guessed)return'fake_guessed';return'real_artists';
+}
+
+// ── RESULTS ──
+function setupResults(s){
+  const rc=document.getElementById('resCanvas');drawStrokes(rc.getContext('2d'),rc.width,rc.height,s.strokes);
+  document.getElementById('finalWord').textContent=s.word.toUpperCase();
+  const fp=s.players.find(p=>p.id===s.fakeId);
+  document.getElementById('finalFake').textContent=fp?.name||'?';
+  if(s.fakeGuess){const ok=s.fakeGuess.toLowerCase().trim()===s.word.toLowerCase().trim();const el=document.getElementById('fakeGuessRes');el.textContent=`Fake guessed: "${s.fakeGuess}" — ${ok?'✅ Correct!':'❌ Wrong!'}`;el.style.color=ok?'var(--accent3)':'var(--accent2)';}
+  const oc={
+    real_artists:{emoji:'🕵️',title:'Real Artists Win!',col:'var(--accent3)',desc:`Team caught ${fp?.name}!`},
+    fake_survived:{emoji:'🎭',title:`${fp?.name} Wins!`,col:'var(--accent2)',desc:'The Fake Artist escaped undetected!'},
+    fake_guessed:{emoji:'🧠',title:`${fp?.name} Wins!`,col:'var(--accent)',desc:'Caught but guessed the word correctly!'}
+  };
+  const o=oc[s.winner]||oc.real_artists;
+  document.getElementById('resEmoji').textContent=o.emoji;
+  document.getElementById('resTitle').textContent=o.title;
+  document.getElementById('resTitle').style.color=o.col;
+  document.getElementById('resDesc').textContent=o.desc;
+  const active=getActiveVoterIds(s);
+  document.getElementById('voteBreakdown').innerHTML=Object.entries(s.votes||{}).map(([vid,vtd])=>{
+    const vr=s.players.find(p=>p.id===vid),vt=s.players.find(p=>p.id===vtd),ok=vtd===s.fakeId;
+    return `<div class="vote-row"><div class="voter"><span style="background:${vr?.color};width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;"></span>${vr?.name||'?'}</div><span style="color:var(--muted);font-size:0.75rem;">voted</span><div style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--accent);">${vt?.name||'?'} ${ok?'✅':'❌'}</div></div>`;
+  }).join('');
+  document.getElementById('gmRestartPanel').style.display=isGM?'block':'none';
+  document.getElementById('playerRestart').style.display=isGM?'none':'block';
+}
+
+window.restartGame=async function(){
+  const snap=await get(GAME_REF);if(!snap.exists())return;
+  const players=snap.val().players;
+  const fresh=freshState();
+  fresh.players=players;
+  fresh.createdAt=Date.now(); // FIX 8: reset stale timer
+  await saveState(fresh);
+  voted=false;myVote=null;stroked=false;
+  if(document.getElementById('catInput'))document.getElementById('catInput').value='';
+  if(document.getElementById('wrdInput'))document.getElementById('wrdInput').value='';
+  showNotif('🔄 New round!');
+};
+
+// ── RESPONSIVE ──
+function resize(){const w=Math.min(340,window.innerWidth-48);document.querySelectorAll('canvas').forEach(c=>{c.style.width=w+'px';c.style.height=w+'px';});}
+window.addEventListener('resize',resize);resize();
+
+</script>
+</body>
+</html>
